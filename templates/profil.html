@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}Profil{% endblock %}
+
+{% block content %}
+    <h1>Profil de {{ utilisateur.nom_utilisateur }}</h1>
+
+    <div class="container">
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#infos">Informations Personnelles</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#cours">Cours</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#challenges">Challenges</a>
+            </li>
+        </ul>
+    
+        <div class="tab-content">
+            <div id="infos" class="container tab-pane active"><br>
+                <form method="post" action="{{ url_for('profil') }}" class="mt-4">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="form-group">
+                        {{ form.email.label(class="form-control-label") }}
+                        {{ form.email(class="form-control") }}
+                        {% for erreur in form.email.errors %}
+                            <small class="text-danger">{{ erreur }}</small>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.classe.label(class="form-control-label") }}
+                        {{ form.classe(class="form-control") }}
+                        {% for erreur in form.classe.errors %}
+                            <small class="text-danger">{{ erreur }}</small>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.nom.label(class="form-control-label") }}
+                        {{ form.nom(class="form-control") }}
+                        {% for erreur in form.nom.errors %}
+                            <small class="text-danger">{{ erreur }}</small>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.prenom.label(class="form-control-label") }}
+                        {{ form.prenom(class="form-control") }}
+                        {% for erreur in form.prenom.errors %}
+                            <small class="text-danger">{{ erreur }}</small>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.nom_utilisateur.label(class="form-control-label") }}
+                        {{ form.nom_utilisateur(class="form-control") }}
+                        {% for erreur in form.nom_utilisateur.errors %}
+                            <small class="text-danger">{{ erreur }}</small>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.mot_de_passe_actuel.label(class="form-control-label") }}
+                        {{ form.mot_de_passe_actuel(class="form-control") }}
+                        {% for erreur in form.mot_de_passe_actuel.errors %}
+                            <small class="text-danger">{{ erreur }}</small>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.nouveau_mot_de_passe.label(class="form-control-label") }}
+                        {{ form.nouveau_mot_de_passe(class="form-control") }}
+                        {% for erreur in form.nouveau_mot_de_passe.errors %}
+                            <small class="text-danger">{{ erreur }}</small>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.confirmation_mot_de_passe.label(class="form-control-label") }}
+                        {{ form.confirmation_mot_de_passe(class="form-control") }}
+                        {% for erreur in form.confirmation_mot_de_passe.errors %}
+                            <small class="text-danger">{{ erreur }}</small>
+                        {% endfor %}
+                    </div>
+            
+                    {{ form.sauvegarder_modifications(class="btn btn-primary") }}
+                </form>
+            </div>
+            <div id="cours" class="container tab-pane fade"><br>
+                <!-- Liste des cours ici -->
+            </div>
+            <div id="challenges" class="container tab-pane fade"><br>
+                <!-- Liste des challenges ici -->
+            </div>
+        </div>
+    </div>
+{% endblock %}

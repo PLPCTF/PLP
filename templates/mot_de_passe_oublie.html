@@ -1,0 +1,19 @@
+{% extends 'base_connexion.html' %}
+
+{% block title %}Mot de passe oublié{% endblock %}
+
+{% block content %}
+    <h1>Mot de passe oublié</h1>
+    <form method="POST" action="{{ url_for('mot_de_passe_oublie') }}">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.email.label(class="form-control-label") }}
+            {{ form.email(class="form-control") }}
+            {% for erreur in form.email.errors %}
+                <small class="text-danger">{{ erreur }}</small>
+            {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary">Envoyer les instructions</button>
+        <a href="{{ url_for('connexion') }}" class="btn btn-secondary">Retour vers la connexion</a>
+    </form>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Cours{% endblock %}
+
+{% block content %}
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>Cours</h1>
+        <!-- Assurez-vous que l'URL dans href est correcte et mène à la route de création de cours -->
+        <a href="{{ url_for('creer_cours') }}" class="btn btn-primary">Créer un nouveau cours</a>
+    </div>
+
+    
+    <div class="container mt-4">
+        <div class="row">
+            {% for cours in cours_list %}
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <a href="{{ url_for('detail_cours', cours_id=cours.uid_cours) }}" style="text-decoration: none;">
+                            <h5 class="card-title" style="color: black;">{{ cours.titre_cours }}</h5>
+                        </a>
+                        <p class="card-text">{{ cours.description_cours | truncate(150) }}</p>
+                        <p class="text-muted">Catégories: {{ cours.categorie_cours }}</p>
+                        <!-- Vous pouvez ajouter un bouton pour plus de détails si nécessaire -->
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}

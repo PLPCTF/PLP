@@ -1,0 +1,26 @@
+{% extends 'base_connexion.html' %}
+
+{% block title %}Réinitialisation du mot de passe{% endblock %}
+
+{% block content %}
+    <h1>Réinitialiser le mot de passe</h1>
+    <form method="POST" action="{{ url_for('reinitialiser_mot_de_passe', token=token) }}">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.nouveau_mot_de_passe.label(class="form-control-label") }}
+            {{ form.nouveau_mot_de_passe(class="form-control") }}
+            {% for erreur in form.nouveau_mot_de_passe.errors %}
+                <small class="text-danger">{{ erreur }}</small>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.confirmation_mot_de_passe.label(class="form-control-label") }}
+            {{ form.confirmation_mot_de_passe(class="form-control") }}
+            {% for erreur in form.confirmation_mot_de_passe.errors %}
+                <small class="text-danger">{{ erreur }}</small>
+            {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary">Réinitialiser le mot de passe</button>
+        <a href="{{ url_for('connexion') }}" class="btn btn-secondary">Retour vers la connexion</a>
+    </form>
+{% endblock %}

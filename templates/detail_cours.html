@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Cours{% endblock %}
+
+{% block content %}
+    <div style="display: flex; align-items: center;">
+        <a href="{{ url_for('afficher_cours') }}" style="color: black; text-decoration: none; margin-right: 10px;">
+        <i class="fas fa-arrow-left"></i> <!-- Assurez-vous d'inclure FontAwesome -->
+        </a>
+        <h2 style="margin: 0;">{{ cours.titre_cours }}</h2>
+        <span style="margin-left: auto; color: grey;">{{ cours.categorie_cours }}</span>
+    </div>
+    
+    <div class="container mt-4">
+        <div class="container">
+            <div>{{ cours.contenu | safe }}</div>
+        </div>        
+    </div>
+{% endblock %}
