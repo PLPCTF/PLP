@@ -8,7 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from flask_login import LoginManager, current_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
-from wtforms import StringField, PasswordField, SubmitField, validators, TextAreaField
+from wtforms import StringField, PasswordField, SubmitField, validators, TextAreaField, IntegerField
 from wtforms.validators import ValidationError, DataRequired
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
@@ -39,17 +39,6 @@ login_manager.login_message_category = 'info'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            flash('Vous devez être connecté pour accéder à cette page.', 'danger')
-            return redirect(url_for('connexion'))
-        elif current_user.role != 2:
-            flash('Accès refusé. Vous n\'avez pas les droits nécessaires.', 'danger')
-            return redirect(url_for('accueil'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 ## Classes
 
@@ -88,14 +77,6 @@ class FormulaireProfil(FlaskForm):
     confirmation_mot_de_passe = PasswordField('Confirmer le nouveau mot de passe', validators=[validators.EqualTo('nouveau_mot_de_passe', message='Les mots de passe doivent correspondre.')])
     sauvegarder_modifications = SubmitField('Sauvegarder les modifications')
 
-class FormulaireCours(FlaskForm):
-    titre_cours = StringField('Titre', validators=[DataRequired()])
-    description_cours = TextAreaField('Description', validators=[DataRequired()])
-    categorie_cours = StringField('Catégorie', validators=[DataRequired()])
-    contenu = TextAreaField('Contenu', validators=[DataRequired()])
-    submit = SubmitField('Créer Cours')
-
-
 class Utilisateur(db.Model):
     uid_utilisateur = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -125,12 +106,30 @@ class Utilisateur(db.Model):
     def is_anonymous(self):
         return False
 
+class FormulaireCours(FlaskForm):
+    titre_cours = StringField('Titre', validators=[DataRequired()])
+    description_cours = TextAreaField('Description', validators=[DataRequired()])
+    categorie_cours = StringField('Catégorie', validators=[DataRequired()])
+    contenu = TextAreaField('Contenu', validators=[DataRequired()])
+    submit = SubmitField('Créer Cours')
+
 class Cours(db.Model):
     uid_cours = db.Column(db.Integer, primary_key=True)
     titre_cours = db.Column(db.String(100), nullable=False)
     description_cours = db.Column(db.Text, nullable=False)
     categorie_cours = db.Column(db.String(100), nullable=False)
     contenu = db.Column(db.Text, nullable=False)
+
+
+class FormulaireChallenge(FlaskForm):
+    titre_challenge = StringField('Titre', validators=[DataRequired()])
+    description_challenge = TextAreaField('Description', validators=[DataRequired()])
+    categorie_challenge = StringField('Catégorie', validators=[DataRequired()])
+    indice = TextAreaField('Indice', validators=[DataRequired()])
+    value = IntegerField('Valeur', validators=[DataRequired()])
+    lien_ctfd = StringField('Lien CTFD', validators=[DataRequired()])
+    flag = StringField('Flag', validators=[DataRequired()])
+    submit = SubmitField('Ajouter Challenge')
 
 class Challenge(db.Model):
     uid_challenge = db.Column(db.Integer, primary_key=True)
@@ -139,6 +138,7 @@ class Challenge(db.Model):
     indice = db.Column(db.String(255))
     cours_id = db.Column(db.Integer, db.ForeignKey('cours.uid_cours'), nullable=False)
     flag = db.Column(db.String(100), nullable=False)
+    lien_ctfd = db.Column(db.String(100), nullable=False)
     value = db.Column(db.Integer, nullable=False)
     categorie_challenge = db.Column(db.String(100), nullable=False)
 
@@ -328,12 +328,7 @@ def detail_cours(cours_id):
     return render_template('detail_cours.html', cours=cours)
 
 @app.route('/cours/creer-cours', methods=['GET', 'POST'])
-@admin_required
 def creer_cours():
-    login_manager.login_view = 'connexion'
-    if current_user.role != 2:
-        return "Accès refusé", 403  # Ou redirigez vers une page d'erreur
-
     form = FormulaireCours()
     if form.validate_on_submit():
         nouveau_cours = Cours(titre_cours=form.titre_cours.data,
@@ -345,6 +340,36 @@ def creer_cours():
         flash('Le cours a été créé avec succès.', 'success')
         return redirect(url_for('afficher_cours'))
     return render_template('creer_cours.html', form=form)
+
+@app.route('/challenges')
+def afficher_challenges():
+    challenges_list = Challenge.query.all()
+    return render_template('challenges.html', challenges_list=challenges_list)
+
+@app.route('/challenges/<int:challenge_id>')
+def detail_challenge(challenge_id):
+    challenge = Challenge.query.get_or_404(challenge_id)
+    return render_template('detail_challenge.html', challenge=challenge)
+
+@app.route('/challenges/ajouter-challenge', methods=['GET', 'POST'])
+def ajouter_challenge():
+    form = FormulaireChallenge()
+    if form.validate_on_submit():
+        nouveau_challenge = Challenge(
+            titre_challenge=form.titre_challenge.data,
+            description_challenge=form.description_challenge.data,
+            categorie_challenge=form.categorie_challenge.data,
+            indice=form.indice.data,
+            value=form.value.data,
+            lien_ctfd=form.lien_ctfd.data,
+            flag=form.flag.data
+        )
+        db.session.add(nouveau_challenge)
+        db.session.commit()
+        flash('Le challenge a été ajouté avec succès.', 'success')
+        return redirect(url_for('afficher_challenges'))
+    return render_template('ajouter_challenge.html', form=form)
+
 
 @app.route('/deconnexion')
 def deconnexion():

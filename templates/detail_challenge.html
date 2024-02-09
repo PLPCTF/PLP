@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Challenges{% endblock %}
+
+{% block content %}
+    <div style="display: flex; align-items: center;">
+        <a href="{{ url_for('afficher_challenges') }}" style="color: black; text-decoration: none; margin-right: 10px;">
+        <i class="fas fa-arrow-left"></i> <!-- Assurez-vous d'inclure FontAwesome -->
+        </a>
+        <h2 style="margin: 0;">{{ challenge.titre_challenge }}</h2>
+        <span style="margin-left: auto; color: grey;">{{ challenge.categorie_challenge }}</span>
+    </div>
+    
+    <div class="container mt-4">
+        <div class="container">
+            <div>{{ challenge.description_challenge | safe }}</div>
+        </div>        
+    </div>
+{% endblock %}

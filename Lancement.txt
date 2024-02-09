@@ -2,4 +2,4 @@ python -m venv venv
 venv\Scripts\activate
 
 Installation:
-pip install Flask Flask-Login Flask-Restful Flask-SQLAlchemy email_validator Werkzeug Flask-Migrate WTForms[email]
+pip install Flask Flask-Login Flask-Restful Flask-SQLAlchemy email_validator Werkzeug Flask-Migrate WTForms[email] email_validator
