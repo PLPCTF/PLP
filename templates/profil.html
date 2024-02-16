@@ -94,7 +94,11 @@
                 <!-- Liste des cours ici -->
             </div>
             <div id="challenges" class="container tab-pane fade"><br>
-                <!-- Liste des challenges ici -->
+                <ul>
+                    {% for challenge in utilisateur.challenges_valides %}
+                        <li>{{ challenge.titre_challenge }}</li>
+                    {% endfor %}
+                </ul>
             </div>
         </div>
     </div>

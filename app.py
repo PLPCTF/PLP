@@ -2,7 +2,7 @@
 
 import secrets
 from datetime import datetime, timedelta
-from flask import Flask, render_template, redirect, url_for, flash, session
+from flask import Flask, render_template, redirect, url_for, flash, session, request
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
@@ -186,6 +186,13 @@ def create_app():
 
 
 ## Routes
+
+@app.context_processor
+def inject_user():
+    if 'utilisateur_uid_utilisateur' in session:
+        utilisateur = Utilisateur.query.get(session['utilisateur_uid_utilisateur'])
+        return dict(utilisateur=utilisateur)
+    return dict(utilisateur=None)
 
 @app.route('/', methods=['GET', 'POST'])
 def connexion():
@@ -437,6 +444,22 @@ def supprimer_challenge(uid_challenge):
 def detail_challenge(uid_challenge):
     challenge = Challenge.query.get_or_404(uid_challenge)
     return render_template('detail_challenge.html', challenge=challenge)
+
+@app.route('/challenges/verifier/<int:uid_challenge>', methods=['POST'])
+def verifier_flag(uid_challenge):
+    challenge = Challenge.query.get_or_404(uid_challenge)
+    utilisateur = Utilisateur.query.get(session['utilisateur_uid_utilisateur'])
+    flag_soumis = request.form['flag']
+
+    if flag_soumis == challenge.flag:
+        utilisateur.score += challenge.value
+        utilisateur.challenges_valides.append(challenge)
+        db.session.commit()
+        flash('Flag correct, score mis à jour !', 'success')
+    else:
+        flash('Flag incorrect, veuillez réessayer.', 'danger')
+
+    return redirect(url_for('detail_challenge', uid_challenge=uid_challenge))
 
 
 @app.route('/deconnexion')

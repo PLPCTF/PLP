@@ -16,6 +16,24 @@
             <div>{{ challenge.description_challenge | safe }}</div>
         </div>        
     </div>
+    
+    {% if challenge in utilisateur.challenges_valides %}
+        <p>Challenge déjà validé.</p>
+    {% else %}
+        <form method="post" action="{{ url_for('verifier_flag', uid_challenge=challenge.uid_challenge) }}" class="mt-4">
+            <div class="form-group">
+                <input type="text" name="flag" placeholder="Entrez le flag ici" class="form-control">
+            </div>
+            <button type="submit" class="btn btn-primary">Soumettre</button>
+        </form>
+    {% endif %}
+    
+    <div style="margin-top: 20px; display: flex; align-items: center; gap: 10px;">
+        <h4>Cours Associés</h4>
+        {% for cours in challenge.cours %}
+            <li>{{ cours.titre_cours }}</li>
+        {% endfor %}      
+    </div>
 
 <!-- Boutons Modifier et Supprimer -->
 <div style="margin-top: 20px; display: flex; align-items: center; gap: 10px;">
@@ -23,13 +41,6 @@
     <form action="{{ url_for('supprimer_challenge', uid_challenge=challenge.uid_challenge) }}" method="post" style="margin: 0;">
         <input type="submit" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce challenge ?');" value="Supprimer" class="btn btn-danger">
     </form>
-</div>
-
-<div style="margin-top: 20px; display: flex; align-items: center; gap: 10px;">
-    <h2>Cours Associés</h2>
-    {% for cours in challenge.cours %}
-        <li>{{ cours.titre_cours }}</li>
-    {% endfor %}      
 </div>
 
 {% endblock %}
