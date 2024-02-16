@@ -1,19 +1,27 @@
 {% extends 'base.html' %}
 
-
-{% block title %}Ajouter un nouveau challenge{% endblock %}
+{% block title %}
+    {% if est_modification %}Modifier le challenge{% else %}Ajouter un nouveau challenge{% endif %}
+{% endblock %}
 
 {% block content %}
-    <h1>Ajouter un nouveau challenge</h1>
+    <h1>{% if est_modification %}Modifier le challenge{% else %}Ajouter un nouveau challenge{% endif %}</h1>
 
     <div class="container">
-        <form method="post" action="{{ url_for('ajouter_challenge') }}" class="mt-4">
+        <form method="post" action="{% if est_modification %}{{ url_for('modifier_challenge', uid_challenge=challenge.uid_challenge) }}{% else %}{{ url_for('ajouter_challenge') }}{% endif %}" class="mt-4">
             {{ form.hidden_tag() }}
             
             <div class="form-group">
                 {{ form.titre_challenge.label(class="form-control-label") }}
                 {{ form.titre_challenge(class="form-control") }}
                 {% for erreur in form.titre_challenge.errors %}
+                    <small class="text-danger">{{ erreur }}</small>
+                {% endfor %}
+            </div>
+            <div class="form-group">
+                {{ form.categorie_challenge.label(class="form-control-label") }}
+                {{ form.categorie_challenge(class="form-control") }}
+                {% for erreur in form.categorie_challenge.errors %}
                     <small class="text-danger">{{ erreur }}</small>
                 {% endfor %}
             </div>
@@ -25,9 +33,9 @@
                 {% endfor %}
             </div>
             <div class="form-group">
-                {{ form.categorie_challenge.label(class="form-control-label") }}
-                {{ form.categorie_challenge(class="form-control") }}
-                {% for erreur in form.categorie_challenge.errors %}
+                {{ form.cours_associes.label(class="form-control-label") }}
+                {{ form.cours_associes(class="form-control") }}
+                {% for erreur in form.cours_associes.errors %}
                     <small class="text-danger">{{ erreur }}</small>
                 {% endfor %}
             </div>
@@ -59,8 +67,14 @@
                     <small class="text-danger">{{ erreur }}</small>
                 {% endfor %}
             </div>            
-            
-            {{ form.submit(class="btn btn-primary") }}
+
+            {{ form.submit(class="btn btn-primary", value=( "Modifier" if est_modification else "Créer")) }}
+        
+            {% if est_modification %}
+                <a href="{{ url_for('detail_challenge', uid_challenge=challenge.uid_challenge) }}" class="btn btn-secondary">Annuler</a>
+            {% else %}
+                <a href="{{ url_for('afficher_challenges') }}" class="btn btn-secondary">Annuler</a>
+            {% endif %}
         </form>
     </div>
 {% endblock %}

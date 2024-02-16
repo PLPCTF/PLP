@@ -1,13 +1,16 @@
 {% extends 'base.html' %}
 
 
-{% block title %}Créer un nouveau cours{% endblock %}
+{% block title %}
+    {% if est_modification %}Modifier un cours{% else %}Créer un nouveau cours{% endif %}
+{% endblock %}
 
 {% block content %}
-    <h1>Créer un nouveau cours</h1>
+    <h1>{% if est_modification %}Modifier le cours{% else %}Créer un nouveau cours{% endif %}</h1>
+
 
     <div class="container">
-        <form method="post" action="{{ url_for('creer_cours') }}" class="mt-4">
+        <form method="post" action="{% if est_modification %}{{ url_for('modifier_cours', uid_cours=cours.uid_cours) }}{% else %}{{ url_for('creer_cours') }}{% endif %}" class="mt-4">
             {{ form.hidden_tag() }}
             
             <div class="form-group">
@@ -39,7 +42,14 @@
                 {% endfor %}
             </div>
             
-            {{ form.submit(class="btn btn-primary") }}
+            {{ form.submit(class="btn btn-primary", value=( "Modifier" if est_modification else "Créer")) }}
+
+            {% if est_modification %}
+                <a href="{{ url_for('detail_cours', uid_cours=cours.uid_cours) }}" class="btn btn-secondary">Annuler</a>
+            {% else %}
+                <a href="{{ url_for('afficher_cours') }}" class="btn btn-secondary">Annuler</a>
+            {% endif %}
+
         </form>
     </div>
 {% endblock %}

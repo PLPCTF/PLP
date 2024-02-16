@@ -8,7 +8,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from flask_login import LoginManager, current_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
-from wtforms import StringField, PasswordField, SubmitField, validators, TextAreaField, IntegerField
+from wtforms import StringField, PasswordField, SubmitField, validators, TextAreaField, IntegerField, SelectMultipleField, widgets
+from wtforms.widgets import ListWidget, CheckboxInput
 from wtforms.validators import ValidationError, DataRequired
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
@@ -77,6 +78,23 @@ class FormulaireProfil(FlaskForm):
     confirmation_mot_de_passe = PasswordField('Confirmer le nouveau mot de passe', validators=[validators.EqualTo('nouveau_mot_de_passe', message='Les mots de passe doivent correspondre.')])
     sauvegarder_modifications = SubmitField('Sauvegarder les modifications')
 
+# Table de jointure pour les cours suivis par l'utilisateur
+utilisateur_cours = db.Table('utilisateur_cours',
+    db.Column('utilisateur_uid', db.Integer, db.ForeignKey('utilisateur.uid_utilisateur'), primary_key=True),
+    db.Column('cours_uid', db.Integer, db.ForeignKey('cours.uid_cours'), primary_key=True)
+)
+
+# Table de jointure pour les challenges validés par l'utilisateur
+utilisateur_challenge = db.Table('utilisateur_challenge',
+    db.Column('utilisateur_uid', db.Integer, db.ForeignKey('utilisateur.uid_utilisateur'), primary_key=True),
+    db.Column('challenge_uid', db.Integer, db.ForeignKey('challenge.uid_challenge'), primary_key=True)
+)
+
+challenges_cours = db.Table('challenges_cours',
+    db.Column('challenge_id', db.Integer, db.ForeignKey('challenge.uid_challenge'), primary_key=True),
+    db.Column('cours_id', db.Integer, db.ForeignKey('cours.uid_cours'), primary_key=True)
+)
+
 class Utilisateur(db.Model):
     uid_utilisateur = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -106,6 +124,7 @@ class Utilisateur(db.Model):
     def is_anonymous(self):
         return False
 
+
 class FormulaireCours(FlaskForm):
     titre_cours = StringField('Titre', validators=[DataRequired()])
     description_cours = TextAreaField('Description', validators=[DataRequired()])
@@ -125,6 +144,7 @@ class FormulaireChallenge(FlaskForm):
     titre_challenge = StringField('Titre', validators=[DataRequired()])
     description_challenge = TextAreaField('Description', validators=[DataRequired()])
     categorie_challenge = StringField('Catégorie', validators=[DataRequired()])
+    cours_associes = SelectMultipleField('Cours Associés', choices=[], widget=ListWidget(prefix_label=False), option_widget=CheckboxInput(), coerce=int)
     indice = TextAreaField('Indice', validators=[DataRequired()])
     value = IntegerField('Valeur', validators=[DataRequired()])
     lien_ctfd = StringField('Lien CTFD', validators=[DataRequired()])
@@ -134,28 +154,13 @@ class FormulaireChallenge(FlaskForm):
 class Challenge(db.Model):
     uid_challenge = db.Column(db.Integer, primary_key=True)
     titre_challenge = db.Column(db.String(100), nullable=False)
+    categorie_challenge = db.Column(db.String(100), nullable=False)
     description_challenge = db.Column(db.Text, nullable=False)
     indice = db.Column(db.String(255))
-    cours_id = db.Column(db.Integer, db.ForeignKey('cours.uid_cours'), nullable=False)
     flag = db.Column(db.String(100), nullable=False)
     lien_ctfd = db.Column(db.String(100), nullable=False)
     value = db.Column(db.Integer, nullable=False)
-    categorie_challenge = db.Column(db.String(100), nullable=False)
-
-    cours = db.relationship('Cours')
-
-
-# Table de jointure pour les cours suivis par l'utilisateur
-utilisateur_cours = db.Table('utilisateur_cours',
-    db.Column('utilisateur_uid', db.Integer, db.ForeignKey('utilisateur.uid_utilisateur'), primary_key=True),
-    db.Column('cours_uid', db.Integer, db.ForeignKey('cours.uid_cours'), primary_key=True)
-)
-
-# Table de jointure pour les challenges validés par l'utilisateur
-utilisateur_challenge = db.Table('utilisateur_challenge',
-    db.Column('utilisateur_uid', db.Integer, db.ForeignKey('utilisateur.uid_utilisateur'), primary_key=True),
-    db.Column('challenge_uid', db.Integer, db.ForeignKey('challenge.uid_challenge'), primary_key=True)
-)
+    cours = db.relationship('Cours', secondary=challenges_cours, backref=db.backref('challenges', lazy=True))
 
 
 @login_manager.user_loader
@@ -168,6 +173,12 @@ def validate_nom_utilisateur(self, field):
         # Si l'utilisateur a fourni un nouveau nom d'utilisateur, vérifiez s'il est déjà pris
         if Utilisateur.query.filter_by(nom_utilisateur=field.data).first():
             raise ValidationError('Ce nom d\'utilisateur est déjà pris.')
+
+def validate_email(self, field):
+    if current_user.is_authenticated and field.data != current_user.email:
+        # Si l'utilisateur a fourni une adresse mail, vérifiez si elle est déjà prise
+        if Utilisateur.query.filter_by(email=field.data).first():
+            raise ValidationError('Cette adresse mail est déjà prise.')
 
 def create_app():
     with app.app_context():
@@ -317,15 +328,13 @@ def profil():
 
     return render_template('profil.html', utilisateur=utilisateur, form=form)
 
+
+## Cours
+
 @app.route('/cours')
 def afficher_cours():
     cours_list = Cours.query.all()  # Récupère tous les cours
     return render_template('cours.html', cours_list=cours_list)
-
-@app.route('/cours/<int:cours_id>')
-def detail_cours(cours_id):
-    cours = Cours.query.get_or_404(cours_id)  # Récupère le cours ou renvoie une erreur 404
-    return render_template('detail_cours.html', cours=cours)
 
 @app.route('/cours/creer-cours', methods=['GET', 'POST'])
 def creer_cours():
@@ -339,36 +348,95 @@ def creer_cours():
         db.session.commit()
         flash('Le cours a été créé avec succès.', 'success')
         return redirect(url_for('afficher_cours'))
-    return render_template('creer_cours.html', form=form)
+    return render_template('creer_cours.html', form=form, est_modification=False)
+
+@app.route('/cours/modifier/<int:uid_cours>', methods=['GET', 'POST'])
+def modifier_cours(uid_cours):
+    cours = Cours.query.get_or_404(uid_cours)
+    form = FormulaireCours(obj=cours)
+    if form.validate_on_submit():
+        cours.titre_cours = form.titre_cours.data
+        cours.description_cours = form.description_cours.data
+        cours.categorie_cours = form.categorie_cours.data
+        cours.contenu = form.contenu.data
+        db.session.commit()
+        flash('Le cours a été mis à jour avec succès.', 'success')
+        return redirect(url_for('detail_cours', uid_cours=uid_cours))
+    return render_template('creer_cours.html', form=form, cours=cours, est_modification=True)
+
+@app.route('/cours/supprimer/<int:uid_cours>', methods=['POST'])
+def supprimer_cours(uid_cours):
+    cours = Cours.query.get_or_404(uid_cours)
+    db.session.delete(cours)
+    db.session.commit()
+    flash('Le cours a été supprimé.', 'success')
+    return redirect(url_for('afficher_cours'))
+
+@app.route('/cours/<int:uid_cours>')
+def detail_cours(uid_cours):
+    cours = Cours.query.get_or_404(uid_cours)  # Récupère le cours ou renvoie une erreur 404
+    return render_template('detail_cours.html', cours=cours)
+
+
+## Challenges
 
 @app.route('/challenges')
 def afficher_challenges():
     challenges_list = Challenge.query.all()
     return render_template('challenges.html', challenges_list=challenges_list)
 
-@app.route('/challenges/<int:challenge_id>')
-def detail_challenge(challenge_id):
-    challenge = Challenge.query.get_or_404(challenge_id)
-    return render_template('detail_challenge.html', challenge=challenge)
-
 @app.route('/challenges/ajouter-challenge', methods=['GET', 'POST'])
 def ajouter_challenge():
     form = FormulaireChallenge()
+    form.cours_associes.choices = [(c.uid_cours, c.titre_cours) for c in Cours.query.all()]  # Assurez-vous d'avoir ce champ dans votre formulaire
     if form.validate_on_submit():
+        cours_choisis = Cours.query.filter(Cours.uid_cours.in_(form.cours_associes.data)).all()
         nouveau_challenge = Challenge(
             titre_challenge=form.titre_challenge.data,
-            description_challenge=form.description_challenge.data,
             categorie_challenge=form.categorie_challenge.data,
+            description_challenge=form.description_challenge.data,
             indice=form.indice.data,
             value=form.value.data,
             lien_ctfd=form.lien_ctfd.data,
             flag=form.flag.data
         )
+        for cours in cours_choisis:
+            nouveau_challenge.cours.append(cours)
         db.session.add(nouveau_challenge)
         db.session.commit()
         flash('Le challenge a été ajouté avec succès.', 'success')
         return redirect(url_for('afficher_challenges'))
-    return render_template('ajouter_challenge.html', form=form)
+    return render_template('ajouter_challenge.html', form=form, est_modification=False)
+
+@app.route('/challenges/modifier/<int:uid_challenge>', methods=['GET', 'POST'])
+def modifier_challenge(uid_challenge):
+    challenge = Challenge.query.get_or_404(uid_challenge)
+    form = FormulaireChallenge(obj=challenge)
+    if form.validate_on_submit():
+        challenge.titre_challenge = form.titre_challenge.data
+        challenge.categorie_challenge=form.categorie_challenge.data
+        challenge.description_challenge=form.description_challenge.data
+        challenge.indice=form.indice.data
+        challenge.value=form.value.data
+        challenge.lien_ctfd=form.lien_ctfd.data
+        challenge.flag=form.flag.data
+        db.session.commit()
+        flash('Le challenge a été mis à jour avec succès.', 'success')
+        return redirect(url_for('detail_challenge', uid_challenge=uid_challenge))
+    return render_template('ajouter_challenge.html', form=form, challenge=challenge, est_modification=True)
+
+@app.route('/challenges/supprimer/<int:uid_challenge>', methods=['POST'])
+def supprimer_challenge(uid_challenge):
+    challenge = Challenge.query.get_or_404(uid_challenge)
+    db.session.delete(challenge)
+    db.session.commit()
+    flash('Le challenge a été supprimé.', 'success')
+    return redirect(url_for('afficher_challenges'))
+
+@app.route('/challenges/<int:uid_challenge>')
+def detail_challenge(uid_challenge):
+    challenge = Challenge.query.get_or_404(uid_challenge)
+    return render_template('detail_challenge.html', challenge=challenge)
 
 
 @app.route('/deconnexion')

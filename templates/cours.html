@@ -16,7 +16,7 @@
             <div class="col-md-4 mb-3">
                 <div class="card">
                     <div class="card-body">
-                        <a href="{{ url_for('detail_cours', cours_id=cours.uid_cours) }}" style="text-decoration: none;">
+                        <a href="{{ url_for('detail_cours', uid_cours=cours.uid_cours) }}" style="text-decoration: none;">
                             <h5 class="card-title" style="color: black;">{{ cours.titre_cours }}</h5>
                         </a>
                         <p class="card-text">{{ cours.description_cours | truncate(150) }}</p>

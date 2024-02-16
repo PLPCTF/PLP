@@ -3,17 +3,26 @@
 {% block title %}Cours{% endblock %}
 
 {% block content %}
-    <div style="display: flex; align-items: center;">
-        <a href="{{ url_for('afficher_cours') }}" style="color: black; text-decoration: none; margin-right: 10px;">
-        <i class="fas fa-arrow-left"></i> <!-- Assurez-vous d'inclure FontAwesome -->
-        </a>
-        <h2 style="margin: 0;">{{ cours.titre_cours }}</h2>
-        <span style="margin-left: auto; color: grey;">{{ cours.categorie_cours }}</span>
-    </div>
-    
-    <div class="container mt-4">
-        <div class="container">
-            <div>{{ cours.contenu | safe }}</div>
-        </div>        
-    </div>
+<div style="display: flex; align-items: center;">
+    <a href="{{ url_for('afficher_cours') }}" style="color: black; text-decoration: none; margin-right: 10px;">
+    <i class="fas fa-arrow-left"></i> <!-- Assurez-vous d'inclure FontAwesome -->
+    </a>
+    <h2 style="margin: 0;">{{ cours.titre_cours }}</h2>
+    <span style="margin-left: auto; color: grey;">{{ cours.categorie_cours }}</span>
+</div>
+
+<div class="container mt-4">
+    <div class="container">
+        <div>{{ cours.contenu | safe }}</div>
+    </div>        
+</div>
+
+<!-- Boutons Modifier et Supprimer -->
+<div style="margin-top: 20px; display: flex; align-items: center; gap: 10px;">
+    <a href="{{ url_for('modifier_cours', uid_cours=cours.uid_cours) }}" class="btn btn-primary">Modifier</a>
+    <form action="{{ url_for('supprimer_cours', uid_cours=cours.uid_cours) }}" method="post" style="margin: 0;">
+        <input type="submit" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce cours ?');" value="Supprimer" class="btn btn-danger">
+    </form>
+</div>
+
 {% endblock %}
