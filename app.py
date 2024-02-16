@@ -163,6 +163,31 @@ class Challenge(db.Model):
     cours = db.relationship('Cours', secondary=challenges_cours, backref=db.backref('challenges', lazy=True))
 
 
+
+
+# Fonction pour vérifier si l'utilisateur est un administrateur
+def est_admin(utilisateur):
+    return utilisateur.role == 2
+
+# Fonction pour vérifier si l'utilisateur est un utilisateur lambda
+def est_lambda(utilisateur):
+    return utilisateur.role == 1
+
+
+
+# Décorateur pour restreindre l'accès aux administrateurs
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        utilisateur = Utilisateur.query.get(session['utilisateur_uid_utilisateur'])    
+        if not est_admin(utilisateur):  # Assurez-vous que cette fonction renvoie True si l'utilisateur est un admin
+            return redirect(url_for('accueil'))  # Redirige vers la page lambda si l'utilisateur n'est pas un admin
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return Utilisateur.query.get(int(user_id))
@@ -386,27 +411,30 @@ def afficher_challenges():
     return render_template('challenges.html', challenges_list=challenges_list)
 
 @app.route('/challenges/ajouter-challenge', methods=['GET', 'POST'])
+@admin_required
 def ajouter_challenge():
+    utilisateur = Utilisateur.query.get(session['utilisateur_uid_utilisateur'])
     form = FormulaireChallenge()
-    form.cours_associes.choices = [(c.uid_cours, c.titre_cours) for c in Cours.query.all()]  # Assurez-vous d'avoir ce champ dans votre formulaire
+    # Récupérer tous les cours de la base de données et les trier par titre
+    cours_list = Cours.query.order_by(Cours.titre_cours).all()
+    
+    # Passer la liste triée à votre template
     if form.validate_on_submit():
-        cours_choisis = Cours.query.filter(Cours.uid_cours.in_(form.cours_associes.data)).all()
         nouveau_challenge = Challenge(
             titre_challenge=form.titre_challenge.data,
-            categorie_challenge=form.categorie_challenge.data,
             description_challenge=form.description_challenge.data,
+            categorie_challenge=form.categorie_challenge.data,
             indice=form.indice.data,
             value=form.value.data,
             lien_ctfd=form.lien_ctfd.data,
-            flag=form.flag.data
+            flag=form.flag.data,
+            cours_id=form.cours_id.data
         )
-        for cours in cours_choisis:
-            nouveau_challenge.cours.append(cours)
         db.session.add(nouveau_challenge)
         db.session.commit()
         flash('Le challenge a été ajouté avec succès.', 'success')
         return redirect(url_for('afficher_challenges'))
-    return render_template('ajouter_challenge.html', form=form, est_modification=False)
+    return render_template('ajouter_challenge.html', form=form, cours_list=cours_list)
 
 @app.route('/challenges/modifier/<int:uid_challenge>', methods=['GET', 'POST'])
 def modifier_challenge(uid_challenge):
@@ -445,7 +473,37 @@ def deconnexion():
     flash('Vous avez été déconnecté.', 'info')
     return redirect(url_for('connexion'))
 
+##dashboard
 
+
+@app.route('/dashboard')
+def dashboard():
+    # Statistiques en dur pour tester
+    user_stats = {
+        'total_points': 750,
+        'category_progress': {
+            'Web': {'completed_challenges': 1, 'total_challenges': 3},
+            'Brut force': {'completed_challenges': 4, 'total_challenges': 4},
+            'SQL': {'completed_challenges': 2, 'total_challenges': 5},
+            'Sécurité Applicative': {'completed_challenges': 3, 'total_challenges': 6},
+            'Réseau': {'completed_challenges': 0, 'total_challenges': 2}
+        }
+    }
+
+    # Calculez le pourcentage de progression pour chaque catégorie
+    category_progress_percentages = {}
+    points_gained_per_category = {}
+    for category, progress in user_stats['category_progress'].items():
+        completed = progress['completed_challenges']
+        total = progress['total_challenges']
+        if total != 0:
+            progress_percentage = (completed / total) * 100
+        else:
+            progress_percentage = 0
+        category_progress_percentages[category] = progress_percentage
+        points_gained_per_category[category] = completed * 100  # Suppose que chaque challenge vaut 100 points
+
+    return render_template('dashboard.html', user_stats=user_stats, category_progress_percentages=category_progress_percentages, points_gained_per_category=points_gained_per_category)
 ## Main
 if __name__ == '__main__':
     create_app()

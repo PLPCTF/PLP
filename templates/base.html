@@ -26,12 +26,16 @@
       <li class="nav-item">
         <a class="nav-link" href="{{ url_for('afficher_challenges') }}">Challenges</a>
       </li>
+      <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+    </li>
     </ul>
   </div>
   <div class="ml-auto d-flex">
     <span class="navbar-text mr-3"><strong>{{ current_user.nom_utilisateur }}</strong></span>
     <a class="nav-link" href="{{ url_for('deconnexion') }}">Déconnexion</a>
   </div>
+  
 </nav>
 
 <div class="container mt-4">
