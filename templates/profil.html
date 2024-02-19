@@ -23,82 +23,131 @@
                 <form method="post" action="{{ url_for('profil') }}" class="mt-4">
                     {{ form.hidden_tag() }}
                     
-                    <div class="form-group">
-                        {{ form.email.label(class="form-control-label") }}
-                        {{ form.email(class="form-control") }}
-                        {% for erreur in form.email.errors %}
-                            <small class="text-danger">{{ erreur }}</small>
-                        {% endfor %}
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control {{ 'is-invalid' if form.email.errors else '' }}" id="email" name="email" value="{{ form.email.data }}">
+                        {% if form.email.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.email.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                     
-                    <div class="form-group">
-                        {{ form.classe.label(class="form-control-label") }}
-                        {{ form.classe(class="form-control") }}
-                        {% for erreur in form.classe.errors %}
-                            <small class="text-danger">{{ erreur }}</small>
-                        {% endfor %}
+                    <div class="mb-3">
+                        <label for="classe" class="form-label">Classe</label>
+                        <input type="text" class="form-control {{ 'is-invalid' if form.classe.errors else '' }}" id="classe" name="classe" value="{{ form.classe.data }}">
+                        {% if form.classe.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.classe.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                     
-                    <div class="form-group">
-                        {{ form.nom.label(class="form-control-label") }}
-                        {{ form.nom(class="form-control") }}
-                        {% for erreur in form.nom.errors %}
-                            <small class="text-danger">{{ erreur }}</small>
-                        {% endfor %}
+                    <div class="mb-3">
+                        <label for="nom" class="form-label">Nom</label>
+                        <input type="text" class="form-control {{ 'is-invalid' if form.nom.errors else '' }}" id="nom" name="nom" value="{{ form.nom.data }}">
+                        {% if form.nom.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.nom.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                     
-                    <div class="form-group">
-                        {{ form.prenom.label(class="form-control-label") }}
-                        {{ form.prenom(class="form-control") }}
-                        {% for erreur in form.prenom.errors %}
-                            <small class="text-danger">{{ erreur }}</small>
-                        {% endfor %}
+                    <div class="mb-3">
+                        <label for="prenom" class="form-label">Prénom</label>
+                        <input type="text" class="form-control {{ 'is-invalid' if form.prenom.errors else '' }}" id="prenom" name="prenom" value="{{ form.prenom.data }}">
+                        {% if form.prenom.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.prenom.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                     
-                    <div class="form-group">
-                        {{ form.nom_utilisateur.label(class="form-control-label") }}
-                        {{ form.nom_utilisateur(class="form-control") }}
-                        {% for erreur in form.nom_utilisateur.errors %}
-                            <small class="text-danger">{{ erreur }}</small>
-                        {% endfor %}
+                    <div class="mb-3">
+                        <label for="nom_utilisateur" class="form-label">Nom d'utilisateur</label>
+                        <input type="text" class="form-control {{ 'is-invalid' if form.nom_utilisateur.errors else '' }}" id="nom_utilisateur" name="nom_utilisateur" value="{{ form.nom_utilisateur.data }}">
+                        {% if form.nom_utilisateur.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.nom_utilisateur.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                     
-                    <div class="form-group">
-                        {{ form.mot_de_passe_actuel.label(class="form-control-label") }}
-                        {{ form.mot_de_passe_actuel(class="form-control") }}
-                        {% for erreur in form.mot_de_passe_actuel.errors %}
-                            <small class="text-danger">{{ erreur }}</small>
-                        {% endfor %}
+                    <div class="mb-3">
+                        <label for="mot_de_passe_actuel" class="form-label">Mot de passe actuel</label>
+                        <input type="password" class="form-control {{ 'is-invalid' if form.mot_de_passe_actuel.errors else '' }}" id="mot_de_passe_actuel" name="mot_de_passe_actuel">
+                        {% if form.mot_de_passe_actuel.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.mot_de_passe_actuel.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                     
-                    <div class="form-group">
-                        {{ form.nouveau_mot_de_passe.label(class="form-control-label") }}
-                        {{ form.nouveau_mot_de_passe(class="form-control") }}
-                        {% for erreur in form.nouveau_mot_de_passe.errors %}
-                            <small class="text-danger">{{ erreur }}</small>
-                        {% endfor %}
+                    <div class="mb-3">
+                        <label for="nouveau_mot_de_passe" class="form-label">Nouveau mot de passe</label>
+                        <input type="password" class="form-control {{ 'is-invalid' if form.nouveau_mot_de_passe.errors else '' }}" id="nouveau_mot_de_passe" name="nouveau_mot_de_passe">
+                        {% if form.nouveau_mot_de_passe.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.nouveau_mot_de_passe.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                     
-                    <div class="form-group">
-                        {{ form.confirmation_mot_de_passe.label(class="form-control-label") }}
-                        {{ form.confirmation_mot_de_passe(class="form-control") }}
-                        {% for erreur in form.confirmation_mot_de_passe.errors %}
-                            <small class="text-danger">{{ erreur }}</small>
-                        {% endfor %}
+                    <div class="mb-3">
+                        <label for="confirmation_mot_de_passe" class="form-label">Confirmer le nouveau mot de passe</label>
+                        <input type="password" class="form-control {{ 'is-invalid' if form.confirmation_mot_de_passe.errors else '' }}" id="confirmation_mot_de_passe" name="confirmation_mot_de_passe">
+                        {% if form.confirmation_mot_de_passe.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.confirmation_mot_de_passe.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
             
                     {{ form.sauvegarder_modifications(class="btn btn-primary") }}
                 </form>
             </div>
-            <div id="cours" class="container tab-pane fade"><br>
-                <!-- Liste des cours ici -->
+            <div id="cours" class="container tab-pane active">
+                {% for cours in utilisateur.cours_suivis %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ cours.titre_cours }}</h5>
+                            <p class="card-text">{{ cours.description_cours | truncate(150) }}</p>
+                            <a href="{{ url_for('detail_cours', uid_cours=cours.uid_cours) }}" class="btn btn-primary">Voir le cours</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
-            <div id="challenges" class="container tab-pane fade"><br>
-                <ul>
-                    {% for challenge in utilisateur.challenges_valides %}
-                        <li>{{ challenge.titre_challenge }}</li>
-                    {% endfor %}
-                </ul>
+            <div id="challenges" class="container tab-pane active">
+                {% for challenge in utilisateur.challenges_valides %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ challenge.titre_challenge }}</h5>
+                            <p class="card-text">{{ challenge.description_challenge | truncate(150) }}</p>
+                            <span class="badge bg-success">{{ challenge.value }} points</span>
+                            <a href="{{ url_for('detail_challenge', uid_challenge=challenge.uid_challenge) }}" class="btn btn-primary">Voir le challenge</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         </div>
     </div>

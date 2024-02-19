@@ -3,6 +3,8 @@
 {% block title %}Accueil{% endblock %}
 
 {% block content %}
-    <h1>Bienvenue sur la page d'accueil !</h1>
-    <img src="{{ url_for('static', filename='images/Hacker_sympa.png') }}" alt="Chien hacker très sympathique">
+<div class="container text-center mt-5">
+    <h1 class="mb-3">Bienvenue sur la page d'accueil !</h1>
+    <img src="{{ url_for('static', filename='images/Hacker_sympa.png') }}" alt="Chien hacker très sympathique" class="img-fluid">
+</div>
 {% endblock %}

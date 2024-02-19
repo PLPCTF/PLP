@@ -3,43 +3,42 @@
 {% block title %}Challenges{% endblock %}
 
 {% block content %}
-    <div style="display: flex; align-items: center;">
-        <a href="{{ url_for('afficher_challenges') }}" style="color: black; text-decoration: none; margin-right: 10px;">
-        <i class="fas fa-arrow-left"></i> <!-- Assurez-vous d'inclure FontAwesome -->
-        </a>
-        <h2 style="margin: 0;">{{ challenge.titre_challenge }}</h2>
-        <span style="margin-left: auto; color: grey;">{{ challenge.categorie_challenge }}</span>
-    </div>
+<div class="d-flex align-items-center mb-4">
+    <a href="{{ url_for('afficher_challenges') }}" class="text-dark text-decoration-none me-2">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+    <h2 class="mb-0 flex-grow-1">{{ challenge.titre_challenge }}</h2>
+    <span class="text-muted ms-auto">{{ challenge.categorie_challenge }}</span>
+</div>
 
-    <div class="container mt-4">
-        <div class="container">
-            <div>{{ challenge.description_challenge | safe }}</div>
-        </div>        
-    </div>
-    
-    {% if challenge in utilisateur.challenges_valides %}
-        <p>Challenge déjà validé.</p>
-    {% else %}
-        <form method="post" action="{{ url_for('verifier_flag', uid_challenge=challenge.uid_challenge) }}" class="mt-4">
-            <div class="form-group">
-                <input type="text" name="flag" placeholder="Entrez le flag ici" class="form-control">
-            </div>
-            <button type="submit" class="btn btn-primary">Soumettre</button>
-        </form>
-    {% endif %}
-    
-    <div style="margin-top: 20px; display: flex; align-items: center; gap: 10px;">
-        <h4>Cours Associés</h4>
+<div class="container mt-4">
+    <p>{{ challenge.description_challenge | safe }}</p>
+</div>
+
+{% if challenge in utilisateur.challenges_valides %}
+    <p>Challenge déjà validé.</p>
+{% else %}
+    <form method="post" action="{{ url_for('verifier_flag', uid_challenge=challenge.uid_challenge) }}" class="mt-4">
+        <div class="mb-3">
+            <input type="text" name="flag" placeholder="Entrez le flag ici" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Soumettre</button>
+    </form>
+{% endif %}
+
+<div class="mt-4">
+    <h4>Cours Associés</h4>
+    <ul>
         {% for cours in challenge.cours %}
             <li>{{ cours.titre_cours }}</li>
-        {% endfor %}      
-    </div>
+        {% endfor %}
+    </ul>      
+</div>
 
-<!-- Boutons Modifier et Supprimer -->
-<div style="margin-top: 20px; display: flex; align-items: center; gap: 10px;">
+<div class="mt-4 d-flex align-items-center gap-2">
     <a href="{{ url_for('modifier_challenge', uid_challenge=challenge.uid_challenge) }}" class="btn btn-primary">Modifier</a>
-    <form action="{{ url_for('supprimer_challenge', uid_challenge=challenge.uid_challenge) }}" method="post" style="margin: 0;">
-        <input type="submit" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce challenge ?');" value="Supprimer" class="btn btn-danger">
+    <form action="{{ url_for('supprimer_challenge', uid_challenge=challenge.uid_challenge) }}" method="post">
+        <button type="submit" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce challenge ?');">Supprimer</button>
     </form>
 </div>
 

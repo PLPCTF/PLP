@@ -1,39 +1,4 @@
-{% extends 'base.html' %}
 
-
-{% block title %}
-    {% if est_modification %}Modifier un cours{% else %}Créer un nouveau cours{% endif %}
-{% endblock %}
-
-{% block content %}
-    <h1>{% if est_modification %}Modifier le cours{% else %}Créer un nouveau cours{% endif %}</h1>
-
-
-    <div class="container">
-        <form method="post" action="{% if est_modification %}{{ url_for('modifier_cours', uid_cours=cours.uid_cours) }}{% else %}{{ url_for('creer_cours') }}{% endif %}" class="mt-4">
-            {{ form.hidden_tag() }}
-            
-            <div class="form-group">
-                {{ form.titre_cours.label(class="form-control-label") }}
-                {{ form.titre_cours(class="form-control") }}
-                {% for erreur in form.titre_cours.errors %}
-                    <small class="text-danger">{{ erreur }}</small>
-                {% endfor %}
-            </div>
-            <div class="form-group">
-                {{ form.description_cours.label(class="form-control-label") }}
-                {{ form.description_cours(class="form-control") }}
-                {% for erreur in form.description_cours.errors %}
-                    <small class="text-danger">{{ erreur }}</small>
-                {% endfor %}
-            </div>
-            <div class="form-group">
-                {{ form.categorie_cours.label(class="form-control-label") }}
-                {{ form.categorie_cours(class="form-control") }}
-                {% for erreur in form.categorie_cours.errors %}
-                    <small class="text-danger">{{ erreur }}</small>
-                {% endfor %}
-            </div>
             <div class="form-group">
                 {{ form.contenu.label(class="form-control-label") }}
                 {{ form.contenu(class="form-control") }}
@@ -41,15 +6,61 @@
                     <small class="text-danger">{{ erreur }}</small>
                 {% endfor %}
             </div>
-            
-            {{ form.submit(class="btn btn-primary", value=( "Modifier" if est_modification else "Créer")) }}
 
-            {% if est_modification %}
-                <a href="{{ url_for('detail_cours', uid_cours=cours.uid_cours) }}" class="btn btn-secondary">Annuler</a>
-            {% else %}
-                <a href="{{ url_for('afficher_cours') }}" class="btn btn-secondary">Annuler</a>
-            {% endif %}
 
-        </form>
-    </div>
+
+
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if est_modification %}Modifier un cours{% else %}Créer un nouveau cours{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>{% if est_modification %}Modifier le cours{% else %}Créer un nouveau cours{% endif %}</h1>
+
+    <form method="post" action="{% if est_modification %}{{ url_for('modifier_cours', uid_cours=cours.uid_cours) }}{% else %}{{ url_for('creer_cours') }}{% endif %}">
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+            {{ form.titre_cours.label(class="form-label") }}
+            {{ form.titre_cours(class="form-control" + (" is-invalid" if form.titre_cours.errors else "")) }}
+            {% for error in form.titre_cours.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.description_cours.label(class="form-label") }}
+            {{ form.description_cours(class="form-control" + (" is-invalid" if form.description_cours.errors else "")) }}
+            {% for error in form.description_cours.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.categorie_cours.label(class="form-label") }}
+            {{ form.categorie_cours(class="form-control" + (" is-invalid" if form.categorie_cours.errors else "")) }}
+            {% for error in form.categorie_cours.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.contenu.label(class="form-label") }}
+            {{ form.contenu(class="form-control" + (" is-invalid" if form.contenu.errors else "")) }}
+            {% for error in form.contenu.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-primary">{{ "Modifier" if est_modification else "Créer" }}</button>
+        {% if est_modification %}
+            <a href="{{ url_for('detail_cours', uid_cours=cours.uid_cours) }}" class="btn btn-secondary">Annuler</a>
+        {% else %}
+            <a href="{{ url_for('afficher_cours') }}" class="btn btn-secondary">Annuler</a>
+        {% endif %}
+    </form>
+</div>
 {% endblock %}

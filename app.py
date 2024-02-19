@@ -249,7 +249,7 @@ def validate_token(token, expiration=3600):
     serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
     try:
         utilisateur_uid_utilisateur = serializer.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=expiration)
-        return Utilisateur.query.get(utilisateur_uid_utilisateur)
+        return Utilisateur.query.get(utilisateur.uid_utilisateur)
     except:
         return None
 
@@ -384,6 +384,28 @@ def detail_cours(uid_cours):
     cours = Cours.query.get_or_404(uid_cours)  # Récupère le cours ou renvoie une erreur 404
     return render_template('detail_cours.html', cours=cours)
 
+@app.route('/suivre_cours/<int:uid_cours>', methods=['POST'])
+def suivre_cours(uid_cours):
+    if 'utilisateur_uid_utilisateur' in session:
+        utilisateur = Utilisateur.query.get(session['utilisateur_uid_utilisateur'])
+    cours = Cours.query.get(uid_cours)
+    utilisateur.cours_suivis.append(cours)
+    db.session.commit()
+    flash('Vous suivez maintenant le cours.', 'success')
+    return redirect(url_for('detail_cours', uid_cours=uid_cours))
+
+@app.route('/ne_plus_suivre_cours/<int:uid_cours>', methods=['POST'])
+def ne_plus_suivre_cours(uid_cours):
+    if 'utilisateur_uid_utilisateur' in session:
+        utilisateur = Utilisateur.query.get(session['utilisateur_uid_utilisateur'])
+    cours = Cours.query.get(uid_cours)
+    if cours in utilisateur.cours_suivis:
+        utilisateur.cours_suivis.remove(cours)
+        db.session.commit()
+        flash('Vous ne suivez plus le cours.', 'success')
+    else:
+        flash('Vous ne suivez pas ce cours.', 'warning')
+    return redirect(url_for('detail_cours', uid_cours=uid_cours))
 
 ## Challenges
 

@@ -3,25 +3,30 @@
 {% block title %}Accueil{% endblock %}
 
 {% block content %}
+<div class="container mt-4">
     <h1>Accueil</h1>
-    <form method="POST" action="{{ url_for('connexion') }}">
+    <form method="POST" action="{{ url_for('connexion') }}" class="mt-4">
         {{ form.hidden_tag() }}
-        <div class="form-group">
-            {{ form.nom_utilisateur.label(class="form-control-label") }}
-            {{ form.nom_utilisateur(class="form-control") }}
-            {% for erreur in form.nom_utilisateur.errors %}
-                <small class="text-danger">{{ erreur }}</small>
+        
+        <div class="mb-3">
+            {{ form.nom_utilisateur.label(class="form-label") }}
+            {{ form.nom_utilisateur(class="form-control" + (" is-invalid" if form.nom_utilisateur.errors else "")) }}
+            {% for error in form.nom_utilisateur.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
             {% endfor %}
         </div>
-        <div class="form-group">
-            {{ form.mot_de_passe.label(class="form-control-label") }}
-            {{ form.mot_de_passe(class="form-control") }}
-            {% for erreur in form.mot_de_passe.errors %}
-                <small class="text-danger">{{ erreur }}</small>
+        
+        <div class="mb-3">
+            {{ form.mot_de_passe.label(class="form-label") }}
+            {{ form.mot_de_passe(class="form-control" + (" is-invalid" if form.mot_de_passe.errors else "")) }}
+            {% for error in form.mot_de_passe.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
             {% endfor %}
         </div>
+        
         <button type="submit" class="btn btn-primary">Se connecter</button>
         <a href="{{ url_for('mot_de_passe_oublie') }}" class="btn btn-link">Mot de passe oublié ?</a>
     </form>
     <p class="mt-3">Vous n'avez pas de compte ? <a href="{{ url_for('inscription') }}">Inscrivez-vous ici</a>.</p>
+</div>
 {% endblock %}

@@ -5,76 +5,82 @@
 {% endblock %}
 
 {% block content %}
+<div class="container mt-4">
     <h1>{% if est_modification %}Modifier le challenge{% else %}Ajouter un nouveau challenge{% endif %}</h1>
 
-    <div class="container">
-        <form method="post" action="{% if est_modification %}{{ url_for('modifier_challenge', uid_challenge=challenge.uid_challenge) }}{% else %}{{ url_for('ajouter_challenge') }}{% endif %}" class="mt-4">
-            {{ form.hidden_tag() }}
-            
-            <div class="form-group">
-                {{ form.titre_challenge.label(class="form-control-label") }}
-                {{ form.titre_challenge(class="form-control") }}
-                {% for erreur in form.titre_challenge.errors %}
-                    <small class="text-danger">{{ erreur }}</small>
-                {% endfor %}
-            </div>
-            <div class="form-group">
-                {{ form.categorie_challenge.label(class="form-control-label") }}
-                {{ form.categorie_challenge(class="form-control") }}
-                {% for erreur in form.categorie_challenge.errors %}
-                    <small class="text-danger">{{ erreur }}</small>
-                {% endfor %}
-            </div>
-            <div class="form-group">
-                {{ form.description_challenge.label(class="form-control-label") }}
-                {{ form.description_challenge(class="form-control") }}
-                {% for erreur in form.description_challenge.errors %}
-                    <small class="text-danger">{{ erreur }}</small>
-                {% endfor %}
-            </div>
-            <div class="form-group">
-                {{ form.cours_associes.label(class="form-control-label") }}
-                {{ form.cours_associes(class="form-control") }}
-                {% for erreur in form.cours_associes.errors %}
-                    <small class="text-danger">{{ erreur }}</small>
-                {% endfor %}
-            </div>
-            <div class="form-group">
-                {{ form.indice.label(class="form-control-label") }}
-                {{ form.indice(class="form-control") }}
-                {% for erreur in form.indice.errors %}
-                    <small class="text-danger">{{ erreur }}</small>
-                {% endfor %}
-            </div>
-            <div class="form-group">
-                {{ form.value.label(class="form-control-label") }}
-                {{ form.value(class="form-control") }}
-                {% for erreur in form.value.errors %}
-                    <small class="text-danger">{{ erreur }}</small>
-                {% endfor %}
-            </div>
-            <div class="form-group">
-                {{ form.lien_ctfd.label(class="form-control-label") }}
-                {{ form.lien_ctfd(class="form-control") }}
-                {% for erreur in form.lien_ctfd.errors %}
-                    <small class="text-danger">{{ erreur }}</small>
-                {% endfor %}
-            </div>
-            <div class="form-group">
-                {{ form.flag.label(class="form-control-label") }}
-                {{ form.flag(class="form-control") }}
-                {% for erreur in form.flag.errors %}
-                    <small class="text-danger">{{ erreur }}</small>
-                {% endfor %}
-            </div>            
-
-            {{ form.submit(class="btn btn-primary", value=( "Modifier" if est_modification else "Créer")) }}
+    <form method="post" action="{% if est_modification %}{{ url_for('modifier_challenge', uid_challenge=challenge.uid_challenge) }}{% else %}{{ url_for('ajouter_challenge') }}{% endif %}" class="mt-4">
+        {{ form.hidden_tag() }}
         
-            {% if est_modification %}
-                <a href="{{ url_for('detail_challenge', uid_challenge=challenge.uid_challenge) }}" class="btn btn-secondary">Annuler</a>
-            {% else %}
-                <a href="{{ url_for('afficher_challenges') }}" class="btn btn-secondary">Annuler</a>
-            {% endif %}
-        </form>
-    </div>
+        <div class="mb-3">
+            {{ form.titre_challenge.label(class="form-label") }}
+            {{ form.titre_challenge(class="form-control" + (" is-invalid" if form.titre_challenge.errors else "")) }}
+            {% for error in form.titre_challenge.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.categorie_challenge.label(class="form-label") }}
+            {{ form.categorie_challenge(class="form-control" + (" is-invalid" if form.categorie_challenge.errors else "")) }}
+            {% for error in form.categorie_challenge.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.description_challenge.label(class="form-label") }}
+            {{ form.description_challenge(class="form-control" + (" is-invalid" if form.description_challenge.errors else "")) }}
+            {% for error in form.description_challenge.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.cours_associes.label(class="form-label") }}
+            {{ form.cours_associes(class="form-control" + (" is-invalid" if form.cours_associes.errors else "")) }}
+            {% for error in form.cours_associes.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.indice.label(class="form-label") }}
+            {{ form.indice(class="form-control" + (" is-invalid" if form.indice.errors else "")) }}
+            {% for error in form.indice.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.value.label(class="form-label") }}
+            {{ form.value(class="form-control" + (" is-invalid" if form.value.errors else "")) }}
+            {% for error in form.value.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.lien_ctfd.label(class="form-label") }}
+            {{ form.lien_ctfd(class="form-control" + (" is-invalid" if form.lien_ctfd.errors else "")) }}
+            {% for error in form.lien_ctfd.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.flag.label(class="form-label") }}
+            {{ form.flag(class="form-control" + (" is-invalid" if form.flag.errors else "")) }}
+            {% for error in form.flag.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-primary">{{ "Modifier" if est_modification else "Créer" }}</button>
+        {% if est_modification %}
+            <a href="{{ url_for('detail_challenge', uid_challenge=challenge.uid_challenge) }}" class="btn btn-secondary">Annuler</a>
+        {% else %}
+            <a href="{{ url_for('afficher_challenges') }}" class="btn btn-secondary">Annuler</a>
+        {% endif %}
+    </form>
+</div>
 {% endblock %}

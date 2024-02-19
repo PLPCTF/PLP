@@ -3,17 +3,19 @@
 {% block title %}Mot de passe oublié{% endblock %}
 
 {% block content %}
+<div class="container mt-4">
     <h1>Mot de passe oublié</h1>
-    <form method="POST" action="{{ url_for('mot_de_passe_oublie') }}">
+    <form method="POST" action="{{ url_for('mot_de_passe_oublie') }}" class="mt-4">
         {{ form.hidden_tag() }}
-        <div class="form-group">
-            {{ form.email.label(class="form-control-label") }}
-            {{ form.email(class="form-control") }}
-            {% for erreur in form.email.errors %}
-                <small class="text-danger">{{ erreur }}</small>
+        <div class="mb-3">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+            {% for error in form.email.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
             {% endfor %}
         </div>
-        <button type="submit" class="btn btn-primary">Envoyer les instructions</button>
+        <button type="submit" class="btn btn-primary">Envoyer</button>
         <a href="{{ url_for('connexion') }}" class="btn btn-secondary">Retour vers la connexion</a>
     </form>
+</div>
 {% endblock %}
