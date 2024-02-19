@@ -3,11 +3,17 @@
 {% block title %}Challenges{% endblock %}
 
 {% block content %}
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h1>Challenges</h1>
-        <!-- Assurez-vous que l'URL dans href est correcte et mène à la route de création de challenge -->
-        <a href="{{ url_for('ajouter_challenge') }}" class="btn btn-primary">Ajouter un nouveau challenge</a>
-    </div>
+{% if est_administrateur %}
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h1>Challenges</h1>
+    <!-- Assurez-vous que l'URL dans href est correcte et mène à la route de création de challenge -->
+    <a href="{{ url_for('ajouter_challenge') }}" class="btn btn-primary">Ajouter un nouveau challenge</a>
+</div>
+{% endif %}
+
+
+
+    
 
     
     <div class="container mt-4">

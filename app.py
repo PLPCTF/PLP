@@ -2,7 +2,7 @@
 
 import secrets
 from datetime import datetime, timedelta
-from flask import Flask, render_template, redirect, url_for, flash, session
+from flask import Flask, render_template, redirect, url_for, flash, session, request
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
@@ -14,7 +14,7 @@ from wtforms.validators import ValidationError, DataRequired
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 from functools import wraps
-
+from wtforms import StringField, PasswordField, SubmitField, SelectField
 
 ## Configuration
 
@@ -162,8 +162,30 @@ class Challenge(db.Model):
     value = db.Column(db.Integer, nullable=False)
     cours = db.relationship('Cours', secondary=challenges_cours, backref=db.backref('challenges', lazy=True))
 
+class FormulaireDemandeInscription(FlaskForm):
+    email = StringField('Email', validators=[DataRequired()])
+    classe = StringField('Classe')
+    nom = StringField('Nom', validators=[DataRequired()])
+    prenom = StringField('Prénom', validators=[DataRequired()])
+    nom_utilisateur = StringField('Nom d\'utilisateur', validators=[DataRequired()])
+    mot_de_passe = StringField('Mot de passe', validators=[DataRequired()])
+    role_demande = SelectField('Rôle', choices=[('1', 'Utilisateur'), ('2', 'Administrateur')], validators=[DataRequired()])
+    valider = SubmitField('Valider')
+    rejeter = SubmitField('Rejeter')
 
+class DemandeInscription(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    classe = db.Column(db.String(50))
+    nom = db.Column(db.String(50), nullable=False)
+    prenom = db.Column(db.String(50), nullable=False)
+    nom_utilisateur = db.Column(db.String(20), unique=True, nullable=False)
+    mot_de_passe = db.Column(db.String(64), nullable=False)  # Stockage du mot de passe haché
+    role = db.Column(db.Integer, default=1)  # Par défaut, utilisateur lambda
+    
 
+class ValidationDemandeForm(FlaskForm):
+    role = SelectField('Rôle', choices=[('1', 'Utilisateur'), ('2', 'Administrateur')])
 
 # Fonction pour vérifier si l'utilisateur est un administrateur
 def est_admin(utilisateur):
@@ -187,6 +209,7 @@ def admin_required(f):
 
 
 
+    
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -236,25 +259,24 @@ def accueil():
         return redirect(url_for('connexion'))
     return render_template('accueil.html')
 
+import hashlib
+
 @app.route('/inscription', methods=['GET', 'POST'])
 def inscription():
-    if 'utilisateur_uid_utilisateur' in session:
-        flash('Vous êtes déjà inscrit.', 'info')
-        return redirect(url_for('accueil'))
     form = FormulaireInscription()
     if form.validate_on_submit():
-        mot_de_passe_hache = generate_password_hash(form.mot_de_passe.data, method='pbkdf2:sha256')
-        nouvel_utilisateur = Utilisateur(
+        # Créer une nouvelle demande d'inscription en attente de validation par l'administrateur
+        demande = DemandeInscription(
             email=form.email.data,
             classe=form.classe.data,
             nom=form.nom.data,
             prenom=form.prenom.data,
             nom_utilisateur=form.nom_utilisateur.data,
-            mot_de_passe=mot_de_passe_hache
+            mot_de_passe = generate_password_hash(form.mot_de_passe.data, method='pbkdf2:sha256')
         )
-        db.session.add(nouvel_utilisateur)
+        db.session.add(demande)
         db.session.commit()
-        flash('Inscription réussie ! Vous pouvez maintenant vous connecter.', 'success')
+        flash('Votre demande d\'inscription a été envoyée à l\'administrateur pour validation.', 'success')
         return redirect(url_for('connexion'))
     return render_template('inscription.html', form=form)
 
@@ -299,6 +321,51 @@ def mot_de_passe_oublie():
             flash('Aucun compte associé à cette adresse e-mail.', 'danger')
 
     return render_template('mot_de_passe_oublie.html', form=form)
+
+
+
+
+@app.route('/valider_demande_inscription/<int:demande_id>', methods=['POST'])
+def valider_demande_inscription(demande_id):
+    demande = DemandeInscription.query.get_or_404(demande_id)
+    
+    if request.method == 'POST':
+        role_demande = request.form.get('role_demande')  # Récupérer le rôle choisi par l'administrateur
+        if role_demande not in ['1', '2']:  # Vérifier si le rôle est valide
+            flash('Veuillez sélectionner un rôle valide.', 'error')
+            return redirect(url_for('valider_demande_inscription'))
+
+        utilisateur = Utilisateur(
+            email=demande.email,
+            classe=demande.classe,
+            nom=demande.nom,
+            prenom=demande.prenom,
+            nom_utilisateur=demande.nom_utilisateur,
+            mot_de_passe=demande.mot_de_passe,
+            role=int(role_demande)  # Convertir le rôle en entier
+        )
+        db.session.add(utilisateur)
+        db.session.delete(demande)
+        db.session.commit()
+        flash('La demande d\'inscription a été validée avec succès.', 'success')
+        return redirect(url_for('demandes_inscription_admin'))
+
+@app.route('/rejeter-demande-inscription/<int:demande_id>', methods=['POST'])
+def rejeter_demande_inscription(demande_id):
+    demande = DemandeInscription.query.get_or_404(demande_id)
+    db.session.delete(demande)  # Supprimer la demande d'inscription rejetée
+    db.session.commit()
+    flash('La demande d\'inscription a été rejetée.', 'danger')
+    return redirect(url_for('demandes_inscription_admin'))
+
+@app.route('/demandes-inscription')
+def demandes_inscription_admin():
+    demandes = DemandeInscription.query.all()
+    form = FormulaireDemandeInscription()  # Remplacez VotreFormulaireDeValidation par votre formulaire de validation
+    return render_template('admin_demandes_inscription.html', demandes=demandes, form=form)
+
+   
+   
 
 @app.route('/reinitialiser-mot-de-passe/<token>', methods=['GET', 'POST'])
 def reinitialiser_mot_de_passe(token):
@@ -408,7 +475,9 @@ def detail_cours(uid_cours):
 @app.route('/challenges')
 def afficher_challenges():
     challenges_list = Challenge.query.all()
-    return render_template('challenges.html', challenges_list=challenges_list)
+    utilisateur = Utilisateur.query.get(session['utilisateur_uid_utilisateur']) 
+    est_administrateur = est_admin(Utilisateur)  # Appel à votre fonction pour vérifier si l'utilisateur est un administrateur
+    return render_template('challenges.html', challenges_list=challenges_list,  est_administrateur=est_administrateur)
 
 @app.route('/challenges/ajouter-challenge', methods=['GET', 'POST'])
 @admin_required
@@ -474,7 +543,10 @@ def deconnexion():
     return redirect(url_for('connexion'))
 
 ##dashboard
-
+@app.route('/utilisateurs')
+def page_utilisateur():
+    utilisateurs = Utilisateur.query.all()
+    return render_template('utilisateurs.html', utilisateurs=utilisateurs)
 
 @app.route('/dashboard')
 def dashboard():
