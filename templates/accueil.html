@@ -5,6 +5,10 @@
 {% block content %}
 <div class="container text-center mt-5">
     <h1 class="mb-3">Bienvenue sur la page d'accueil !</h1>
-    <img src="{{ url_for('static', filename='images/Hacker_sympa.png') }}" alt="Chien hacker très sympathique" class="img-fluid">
+    {% if current_user.is_authenticated and current_user.role == 2 %}
+        <img src="{{ url_for('static', filename='images/Hacker_sympa.png') }}" alt="Chien hacker très sympathique" class="img-fluid">
+    {% else %}
+        <img src="{{ url_for('static', filename='images/Chien_en_costume.jpg') }}" alt="Chien en costume très sympathique" class="img-fluid">
+    {% endif %}
 </div>
 {% endblock %}

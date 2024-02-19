@@ -5,7 +5,9 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Challenges</h1>
-    <a href="{{ url_for('ajouter_challenge') }}" class="btn btn-primary">Ajouter un nouveau challenge</a>
+    {% if current_user.is_authenticated and current_user.role == 2 %}
+        <a href="{{ url_for('ajouter_challenge') }}" class="btn btn-primary">Ajouter un nouveau challenge</a>
+    {% endif %}
 </div>
 
 <div class="container mt-4">
@@ -18,7 +20,7 @@
                         <h5 class="card-title">{{ challenge.titre_challenge }}</h5>
                     </a>
                     <span class="badge bg-primary rounded-pill mb-2">{{ challenge.value }} points</span>
-                    <p class="card-text flex-grow-1">{{ challenge.description_challenge | truncate(150) }}</p>
+                    <p class="card-text flex-grow-1">{{ challenge.description_challenge | truncate(50) }}</p>
                     <p class="text-muted">Catégories: {{ challenge.categorie_challenge }}</p>
                 </div>
             </div>

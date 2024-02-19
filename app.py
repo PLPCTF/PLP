@@ -6,9 +6,9 @@ from flask import Flask, render_template, redirect, url_for, flash, session, req
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
-from flask_login import LoginManager, current_user, login_required
+from flask_login import LoginManager, current_user, login_required, login_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from wtforms import StringField, PasswordField, SubmitField, validators, TextAreaField, IntegerField, SelectMultipleField, widgets
+from wtforms import StringField, PasswordField, SubmitField, validators, TextAreaField, IntegerField, SelectMultipleField, widgets, SelectField
 from wtforms.widgets import ListWidget, CheckboxInput
 from wtforms.validators import ValidationError, DataRequired
 from flask_mail import Mail, Message
@@ -41,7 +41,24 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 
-## Classes
+## Formulaires
+
+# Table de jointure pour les cours suivis par l'utilisateur
+utilisateur_cours = db.Table('utilisateur_cours',
+    db.Column('utilisateur_uid', db.Integer, db.ForeignKey('utilisateur.uid_utilisateur'), primary_key=True),
+    db.Column('cours_uid', db.Integer, db.ForeignKey('cours.uid_cours'), primary_key=True)
+)
+
+# Table de jointure pour les challenges validés par l'utilisateur
+utilisateur_challenge = db.Table('utilisateur_challenge',
+    db.Column('utilisateur_uid', db.Integer, db.ForeignKey('utilisateur.uid_utilisateur'), primary_key=True),
+    db.Column('challenge_uid', db.Integer, db.ForeignKey('challenge.uid_challenge'), primary_key=True)
+)
+
+challenges_cours = db.Table('challenges_cours',
+    db.Column('challenge_id', db.Integer, db.ForeignKey('challenge.uid_challenge'), primary_key=True),
+    db.Column('cours_id', db.Integer, db.ForeignKey('cours.uid_cours'), primary_key=True)
+)
 
 class FormulaireInscription(FlaskForm):
     email = StringField('Email', validators=[validators.DataRequired(), validators.Email()])
@@ -78,22 +95,47 @@ class FormulaireProfil(FlaskForm):
     confirmation_mot_de_passe = PasswordField('Confirmer le nouveau mot de passe', validators=[validators.EqualTo('nouveau_mot_de_passe', message='Les mots de passe doivent correspondre.')])
     sauvegarder_modifications = SubmitField('Sauvegarder les modifications')
 
-# Table de jointure pour les cours suivis par l'utilisateur
-utilisateur_cours = db.Table('utilisateur_cours',
-    db.Column('utilisateur_uid', db.Integer, db.ForeignKey('utilisateur.uid_utilisateur'), primary_key=True),
-    db.Column('cours_uid', db.Integer, db.ForeignKey('cours.uid_cours'), primary_key=True)
-)
+class FormulaireCours(FlaskForm):
+    titre_cours = StringField('Titre', validators=[DataRequired()])
+    categorie_cours = StringField('Catégorie', validators=[DataRequired()])
+    description_cours = TextAreaField('Description', validators=[DataRequired()])
+    lien = StringField('Lien de téléchargement', validators=[DataRequired()])
+    submit = SubmitField('Créer Cours')
 
-# Table de jointure pour les challenges validés par l'utilisateur
-utilisateur_challenge = db.Table('utilisateur_challenge',
-    db.Column('utilisateur_uid', db.Integer, db.ForeignKey('utilisateur.uid_utilisateur'), primary_key=True),
-    db.Column('challenge_uid', db.Integer, db.ForeignKey('challenge.uid_challenge'), primary_key=True)
-)
+class FormulaireChallenge(FlaskForm):
+    titre_challenge = StringField('Titre', validators=[DataRequired()])
+    description_challenge = TextAreaField('Description', validators=[DataRequired()])
+    categorie_challenge = StringField('Catégorie', validators=[DataRequired()])
+    cours_associes = SelectMultipleField('Cours Associés', choices=[], widget=ListWidget(prefix_label=False), option_widget=CheckboxInput(), coerce=int)
+    indice = TextAreaField('Indice', validators=[DataRequired()])
+    value = IntegerField('Valeur', validators=[DataRequired()])
+    lien_ctfd = StringField('Lien CTFD', validators=[DataRequired()])
+    flag = StringField('Flag', validators=[DataRequired()])
+    submit = SubmitField('Ajouter Challenge')
 
-challenges_cours = db.Table('challenges_cours',
-    db.Column('challenge_id', db.Integer, db.ForeignKey('challenge.uid_challenge'), primary_key=True),
-    db.Column('cours_id', db.Integer, db.ForeignKey('cours.uid_cours'), primary_key=True)
-)
+class FormulaireDemandeInscription(FlaskForm):
+    email = StringField('Email', validators=[DataRequired()])
+    classe = StringField('Classe')
+    nom = StringField('Nom', validators=[DataRequired()])
+    prenom = StringField('Prénom', validators=[DataRequired()])
+    nom_utilisateur = StringField('Nom d\'utilisateur', validators=[DataRequired()])
+    mot_de_passe = StringField('Mot de passe', validators=[DataRequired()])
+    role_demande = SelectField('Rôle', choices=[('1', 'Utilisateur'), ('2', 'Administrateur')], validators=[DataRequired()])
+    valider = SubmitField('Valider')
+    rejeter = SubmitField('Rejeter')
+
+class DemandeInscription(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    classe = db.Column(db.String(50))
+    nom = db.Column(db.String(50), nullable=False)
+    prenom = db.Column(db.String(50), nullable=False)
+    nom_utilisateur = db.Column(db.String(20), unique=True, nullable=False)
+    mot_de_passe = db.Column(db.String(64), nullable=False)  # Stockage du mot de passe haché
+    role = db.Column(db.Integer, default=1)  # Par défaut, utilisateur lambda
+
+class ValidationDemandeForm(FlaskForm):
+    role = SelectField('Rôle', choices=[('1', 'Utilisateur'), ('2', 'Administrateur')])
 
 class Utilisateur(db.Model):
     uid_utilisateur = db.Column(db.Integer, primary_key=True)
@@ -109,6 +151,7 @@ class Utilisateur(db.Model):
 
     # Relation avec les cours et les challenges
     cours_suivis = db.relationship('Cours', secondary='utilisateur_cours', backref='utilisateurs', lazy='dynamic')
+
     challenges_valides = db.relationship('Challenge', secondary='utilisateur_challenge', backref='utilisateurs', lazy='dynamic')
 
     # Les méthodes pour l'intégration de Flask-Login
@@ -124,32 +167,12 @@ class Utilisateur(db.Model):
     def is_anonymous(self):
         return False
 
-
-class FormulaireCours(FlaskForm):
-    titre_cours = StringField('Titre', validators=[DataRequired()])
-    description_cours = TextAreaField('Description', validators=[DataRequired()])
-    categorie_cours = StringField('Catégorie', validators=[DataRequired()])
-    contenu = TextAreaField('Contenu', validators=[DataRequired()])
-    submit = SubmitField('Créer Cours')
-
 class Cours(db.Model):
     uid_cours = db.Column(db.Integer, primary_key=True)
     titre_cours = db.Column(db.String(100), nullable=False)
-    description_cours = db.Column(db.Text, nullable=False)
     categorie_cours = db.Column(db.String(100), nullable=False)
-    contenu = db.Column(db.Text, nullable=False)
-
-
-class FormulaireChallenge(FlaskForm):
-    titre_challenge = StringField('Titre', validators=[DataRequired()])
-    description_challenge = TextAreaField('Description', validators=[DataRequired()])
-    categorie_challenge = StringField('Catégorie', validators=[DataRequired()])
-    cours_associes = SelectMultipleField('Cours Associés', choices=[], widget=ListWidget(prefix_label=False), option_widget=CheckboxInput(), coerce=int)
-    indice = TextAreaField('Indice', validators=[DataRequired()])
-    value = IntegerField('Valeur', validators=[DataRequired()])
-    lien_ctfd = StringField('Lien CTFD', validators=[DataRequired()])
-    flag = StringField('Flag', validators=[DataRequired()])
-    submit = SubmitField('Ajouter Challenge')
+    description_cours = db.Column(db.Text, nullable=False)
+    lien = db.Column(db.String(100), nullable=False)
 
 class Challenge(db.Model):
     uid_challenge = db.Column(db.Integer, primary_key=True)
@@ -162,11 +185,18 @@ class Challenge(db.Model):
     value = db.Column(db.Integer, nullable=False)
     cours = db.relationship('Cours', secondary=challenges_cours, backref=db.backref('challenges', lazy=True))
 
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != 2:
+            flash("Vous n'avez pas les permissions pour accéder à cette page.", 'danger')
+            return redirect(url_for('accueil'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 @login_manager.user_loader
-def load_user(user_id):
-    return Utilisateur.query.get(int(user_id))
-
+def load_user(uid_utilisateur):
+    return Utilisateur.query.get(int(uid_utilisateur))
 
 def validate_nom_utilisateur(self, field):
     if current_user.is_authenticated and field.data != current_user.nom_utilisateur:
@@ -187,16 +217,9 @@ def create_app():
 
 ## Routes
 
-@app.context_processor
-def inject_user():
-    if 'utilisateur_uid_utilisateur' in session:
-        utilisateur = Utilisateur.query.get(session['utilisateur_uid_utilisateur'])
-        return dict(utilisateur=utilisateur)
-    return dict(utilisateur=None)
-
 @app.route('/', methods=['GET', 'POST'])
 def connexion():
-    if 'utilisateur_uid_utilisateur' in session:
+    if current_user.is_authenticated:
         flash('Vous êtes déjà connecté.', 'info')
         return redirect(url_for('accueil'))
 
@@ -204,7 +227,7 @@ def connexion():
     if form.validate_on_submit():
         utilisateur = Utilisateur.query.filter_by(nom_utilisateur=form.nom_utilisateur.data).first()
         if utilisateur and check_password_hash(utilisateur.mot_de_passe, form.mot_de_passe.data):
-            session['utilisateur_uid_utilisateur'] = utilisateur.uid_utilisateur
+            login_user(utilisateur)
             flash('Connexion réussie !', 'success')
             return redirect(url_for('accueil'))
         else:
@@ -214,32 +237,28 @@ def connexion():
 
 @app.route('/accueil')
 def accueil():
-    if 'utilisateur_uid_utilisateur' not in session:
+    if not current_user.is_authenticated:
         return redirect(url_for('connexion'))
     return render_template('accueil.html')
 
 @app.route('/inscription', methods=['GET', 'POST'])
 def inscription():
-    if 'utilisateur_uid_utilisateur' in session:
-        flash('Vous êtes déjà inscrit.', 'info')
-        return redirect(url_for('accueil'))
     form = FormulaireInscription()
     if form.validate_on_submit():
-        mot_de_passe_hache = generate_password_hash(form.mot_de_passe.data, method='pbkdf2:sha256')
-        nouvel_utilisateur = Utilisateur(
+        # Créer une nouvelle demande d'inscription en attente de validation par l'administrateur
+        demande = DemandeInscription(
             email=form.email.data,
             classe=form.classe.data,
             nom=form.nom.data,
             prenom=form.prenom.data,
             nom_utilisateur=form.nom_utilisateur.data,
-            mot_de_passe=mot_de_passe_hache
+            mot_de_passe = generate_password_hash(form.mot_de_passe.data, method='pbkdf2:sha256')
         )
-        db.session.add(nouvel_utilisateur)
+        db.session.add(demande)
         db.session.commit()
-        flash('Inscription réussie ! Vous pouvez maintenant vous connecter.', 'success')
+        flash('Votre demande d\'inscription a été envoyée à l\'administrateur pour validation.', 'success')
         return redirect(url_for('connexion'))
     return render_template('inscription.html', form=form)
-
 
 def generate_token(utilisateur):
     serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
@@ -259,10 +278,9 @@ def envoyer_email_reinitialisation(destinataire, token):
     message = Message(sujet, recipients=[destinataire], body=corps)
     mail.send(message)
 
-
 @app.route('/mot-de-passe-oublie', methods=['GET', 'POST'])
 def mot_de_passe_oublie():
-    if 'utilisateur_uid_utilisateur' in session:
+    if current_user.is_authenticated:
         flash('Vous êtes déjà connecté.', 'info')
         return redirect(url_for('accueil'))
 
@@ -301,31 +319,73 @@ def reinitialiser_mot_de_passe(token):
 
     return render_template('reinitialiser_mot_de_passe.html', form=form)
 
+@app.route('/valider_demande_inscription/<int:demande_id>', methods=['POST'])
+@admin_required
+def valider_demande_inscription(demande_id):
+    demande = DemandeInscription.query.get_or_404(demande_id)
+
+    if request.method == 'POST':
+        role_demande = request.form.get('role_demande')  # Récupérer le rôle choisi par l'administrateur
+        if role_demande not in ['1', '2']:  # Vérifier si le rôle est valide
+            flash('Veuillez sélectionner un rôle valide.', 'error')
+            return redirect(url_for('valider_demande_inscription'))
+
+        utilisateur = Utilisateur(
+            email=demande.email,
+            classe=demande.classe,
+            nom=demande.nom,
+            prenom=demande.prenom,
+            nom_utilisateur=demande.nom_utilisateur,
+            mot_de_passe=demande.mot_de_passe,
+            role=int(role_demande)  # Convertir le rôle en entier
+        )
+        db.session.add(utilisateur)
+        db.session.delete(demande)
+        db.session.commit()
+        flash('La demande d\'inscription a été validée avec succès.', 'success')
+        return redirect(url_for('demandes_inscription_admin'))
+
+@app.route('/rejeter-demande-inscription/<int:demande_id>', methods=['POST'])
+@admin_required
+def rejeter_demande_inscription(demande_id):
+    demande = DemandeInscription.query.get_or_404(demande_id)
+    db.session.delete(demande)  # Supprimer la demande d'inscription rejetée
+    db.session.commit()
+    flash('La demande d\'inscription a été rejetée.', 'danger')
+    return redirect(url_for('demandes_inscription_admin'))
+
+@app.route('/demandes-inscription')
+@admin_required
+def demandes_inscription_admin():
+    demandes = DemandeInscription.query.all()
+    form = FormulaireDemandeInscription()  # Remplacez VotreFormulaireDeValidation par votre formulaire de validation
+    return render_template('admin_demandes_inscription.html', demandes=demandes, form=form)
+
 @app.route('/profil', methods=['GET', 'POST'])
+@login_required
 def profil():
-    if 'utilisateur_uid_utilisateur' not in session:
+    if not current_user.is_authenticated:
         flash('Veuillez vous connecter pour accéder à votre profil.', 'warning')
         return redirect(url_for('connexion'))
 
-    utilisateur = Utilisateur.query.get(session['utilisateur_uid_utilisateur'])
-    form = FormulaireProfil(obj=utilisateur)
+    form = FormulaireProfil(obj=current_user)
 
     if form.validate_on_submit():
         # Vérifier le mot de passe actuel
-        if not check_password_hash(utilisateur.mot_de_passe, form.mot_de_passe_actuel.data):
+        if not check_password_hash(current_user.mot_de_passe, form.mot_de_passe_actuel.data):
             flash('Le mot de passe actuel est incorrect.', 'danger')
             return redirect(url_for('profil'))
 
         # Mettre à jour les informations de l'utilisateur
-        utilisateur.email = form.email.data
-        utilisateur.classe = form.classe.data
-        utilisateur.nom = form.nom.data
-        utilisateur.prenom = form.prenom.data
-        utilisateur.nom_utilisateur = form.nom_utilisateur.data
+        current_user.email = form.email.data
+        current_user.classe = form.classe.data
+        current_user.nom = form.nom.data
+        current_user.prenom = form.prenom.data
+        current_user.nom_utilisateur = form.nom_utilisateur.data
 
         # Mettre à jour le mot de passe si un nouveau mot de passe est fourni
         if form.nouveau_mot_de_passe.data:
-            utilisateur.mot_de_passe = generate_password_hash(form.nouveau_mot_de_passe.data, method='pbkdf2:sha256')
+            current_user.mot_de_passe = generate_password_hash(form.nouveau_mot_de_passe.data, method='pbkdf2:sha256')
 
         # Sauvegarder les modifications dans la base de données
         db.session.commit()
@@ -333,24 +393,46 @@ def profil():
         flash('Modifications sauvegardées avec succès.', 'success')
         return redirect(url_for('profil'))
 
-    return render_template('profil.html', utilisateur=utilisateur, form=form)
+    return render_template('profil.html', utilisateur=current_user, form=form)
+
+@app.route('/classement', methods=['GET', 'POST'])
+@login_required
+def classement():
+    tri = request.args.get('tri', 'score')
+    ordre = request.args.get('ordre', 'desc')
+    recherche = request.args.get('recherche', '')
+
+    if tri == 'score':
+        if ordre == 'asc':
+            utilisateurs = Utilisateur.query.filter(Utilisateur.nom_utilisateur.like(f"%{recherche}%")).order_by(Utilisateur.score.asc())
+        else:
+            utilisateurs = Utilisateur.query.filter(Utilisateur.nom_utilisateur.like(f"%{recherche}%")).order_by(Utilisateur.score.desc())
+    else:
+        if ordre == 'asc':
+            utilisateurs = Utilisateur.query.filter(Utilisateur.nom_utilisateur.like(f"%{recherche}%")).order_by(Utilisateur.nom_utilisateur.asc())
+        else:
+            utilisateurs = Utilisateur.query.filter(Utilisateur.nom_utilisateur.like(f"%{recherche}%")).order_by(Utilisateur.nom_utilisateur.desc())
+
+    return render_template('classement.html', utilisateurs=utilisateurs)
 
 
 ## Cours
 
 @app.route('/cours')
+@login_required
 def afficher_cours():
     cours_list = Cours.query.all()  # Récupère tous les cours
     return render_template('cours.html', cours_list=cours_list)
 
 @app.route('/cours/creer-cours', methods=['GET', 'POST'])
+@admin_required
 def creer_cours():
     form = FormulaireCours()
     if form.validate_on_submit():
         nouveau_cours = Cours(titre_cours=form.titre_cours.data,
-                              description_cours=form.description_cours.data,
                               categorie_cours=form.categorie_cours.data,
-                              contenu=form.contenu.data)
+                              description_cours=form.description_cours.data,
+                              lien=form.lien.data)
         db.session.add(nouveau_cours)
         db.session.commit()
         flash('Le cours a été créé avec succès.', 'success')
@@ -358,20 +440,22 @@ def creer_cours():
     return render_template('creer_cours.html', form=form, est_modification=False)
 
 @app.route('/cours/modifier/<int:uid_cours>', methods=['GET', 'POST'])
+@admin_required
 def modifier_cours(uid_cours):
     cours = Cours.query.get_or_404(uid_cours)
     form = FormulaireCours(obj=cours)
     if form.validate_on_submit():
         cours.titre_cours = form.titre_cours.data
-        cours.description_cours = form.description_cours.data
         cours.categorie_cours = form.categorie_cours.data
-        cours.contenu = form.contenu.data
+        cours.description_cours = form.description_cours.data
+        cours.lien = form.lien.data
         db.session.commit()
         flash('Le cours a été mis à jour avec succès.', 'success')
         return redirect(url_for('detail_cours', uid_cours=uid_cours))
     return render_template('creer_cours.html', form=form, cours=cours, est_modification=True)
 
 @app.route('/cours/supprimer/<int:uid_cours>', methods=['POST'])
+@admin_required
 def supprimer_cours(uid_cours):
     cours = Cours.query.get_or_404(uid_cours)
     db.session.delete(cours)
@@ -380,27 +464,26 @@ def supprimer_cours(uid_cours):
     return redirect(url_for('afficher_cours'))
 
 @app.route('/cours/<int:uid_cours>')
+@login_required
 def detail_cours(uid_cours):
     cours = Cours.query.get_or_404(uid_cours)  # Récupère le cours ou renvoie une erreur 404
     return render_template('detail_cours.html', cours=cours)
 
 @app.route('/suivre_cours/<int:uid_cours>', methods=['POST'])
+@login_required
 def suivre_cours(uid_cours):
-    if 'utilisateur_uid_utilisateur' in session:
-        utilisateur = Utilisateur.query.get(session['utilisateur_uid_utilisateur'])
     cours = Cours.query.get(uid_cours)
-    utilisateur.cours_suivis.append(cours)
+    current_user.cours_suivis.append(cours)
     db.session.commit()
     flash('Vous suivez maintenant le cours.', 'success')
     return redirect(url_for('detail_cours', uid_cours=uid_cours))
 
 @app.route('/ne_plus_suivre_cours/<int:uid_cours>', methods=['POST'])
+@login_required
 def ne_plus_suivre_cours(uid_cours):
-    if 'utilisateur_uid_utilisateur' in session:
-        utilisateur = Utilisateur.query.get(session['utilisateur_uid_utilisateur'])
     cours = Cours.query.get(uid_cours)
-    if cours in utilisateur.cours_suivis:
-        utilisateur.cours_suivis.remove(cours)
+    if cours in current_user.cours_suivis:
+        current_user.cours_suivis.remove(cours)
         db.session.commit()
         flash('Vous ne suivez plus le cours.', 'success')
     else:
@@ -410,11 +493,13 @@ def ne_plus_suivre_cours(uid_cours):
 ## Challenges
 
 @app.route('/challenges')
+@login_required
 def afficher_challenges():
     challenges_list = Challenge.query.all()
     return render_template('challenges.html', challenges_list=challenges_list)
 
 @app.route('/challenges/ajouter-challenge', methods=['GET', 'POST'])
+@admin_required
 def ajouter_challenge():
     form = FormulaireChallenge()
     form.cours_associes.choices = [(c.uid_cours, c.titre_cours) for c in Cours.query.all()]  # Assurez-vous d'avoir ce champ dans votre formulaire
@@ -438,6 +523,7 @@ def ajouter_challenge():
     return render_template('ajouter_challenge.html', form=form, est_modification=False)
 
 @app.route('/challenges/modifier/<int:uid_challenge>', methods=['GET', 'POST'])
+@admin_required
 def modifier_challenge(uid_challenge):
     challenge = Challenge.query.get_or_404(uid_challenge)
     form = FormulaireChallenge(obj=challenge)
@@ -455,6 +541,7 @@ def modifier_challenge(uid_challenge):
     return render_template('ajouter_challenge.html', form=form, challenge=challenge, est_modification=True)
 
 @app.route('/challenges/supprimer/<int:uid_challenge>', methods=['POST'])
+@admin_required
 def supprimer_challenge(uid_challenge):
     challenge = Challenge.query.get_or_404(uid_challenge)
     db.session.delete(challenge)
@@ -463,19 +550,20 @@ def supprimer_challenge(uid_challenge):
     return redirect(url_for('afficher_challenges'))
 
 @app.route('/challenges/<int:uid_challenge>')
+@login_required
 def detail_challenge(uid_challenge):
     challenge = Challenge.query.get_or_404(uid_challenge)
     return render_template('detail_challenge.html', challenge=challenge)
 
 @app.route('/challenges/verifier/<int:uid_challenge>', methods=['POST'])
+@login_required
 def verifier_flag(uid_challenge):
     challenge = Challenge.query.get_or_404(uid_challenge)
-    utilisateur = Utilisateur.query.get(session['utilisateur_uid_utilisateur'])
     flag_soumis = request.form['flag']
 
     if flag_soumis == challenge.flag:
-        utilisateur.score += challenge.value
-        utilisateur.challenges_valides.append(challenge)
+        current_user.score += challenge.value
+        current_user.challenges_valides.append(challenge)
         db.session.commit()
         flash('Flag correct, score mis à jour !', 'success')
     else:
@@ -484,7 +572,46 @@ def verifier_flag(uid_challenge):
     return redirect(url_for('detail_challenge', uid_challenge=uid_challenge))
 
 
+## Dashboard
+
+@app.route('/utilisateurs')
+@login_required
+def page_utilisateur():
+    utilisateurs = Utilisateur.query.all()
+    return render_template('utilisateurs.html', utilisateurs=utilisateurs)
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    # Statistiques en dur pour tester
+    user_stats = {
+        'total_points': 750,
+        'category_progress': {
+            'Web': {'completed_challenges': 1, 'total_challenges': 3},
+            'Brut force': {'completed_challenges': 4, 'total_challenges': 4},
+            'SQL': {'completed_challenges': 2, 'total_challenges': 5},
+            'Sécurité Applicative': {'completed_challenges': 3, 'total_challenges': 6},
+            'Réseau': {'completed_challenges': 0, 'total_challenges': 2}
+        }
+    }
+
+    # Calculez le pourcentage de progression pour chaque catégorie
+    category_progress_percentages = {}
+    points_gained_per_category = {}
+    for category, progress in user_stats['category_progress'].items():
+        completed = progress['completed_challenges']
+        total = progress['total_challenges']
+        if total != 0:
+            progress_percentage = (completed / total) * 100
+        else:
+            progress_percentage = 0
+        category_progress_percentages[category] = progress_percentage
+        points_gained_per_category[category] = completed * 100  # Suppose que chaque challenge vaut 100 points
+
+    return render_template('dashboard.html', user_stats=user_stats, category_progress_percentages=category_progress_percentages, points_gained_per_category=points_gained_per_category)
+
 @app.route('/deconnexion')
+@login_required
 def deconnexion():
     session.clear()
     flash('Vous avez été déconnecté.', 'info')

@@ -15,16 +15,12 @@
     <p>{{ challenge.description_challenge | safe }}</p>
 </div>
 
-{% if challenge in utilisateur.challenges_valides %}
-    <p>Challenge déjà validé.</p>
-{% else %}
-    <form method="post" action="{{ url_for('verifier_flag', uid_challenge=challenge.uid_challenge) }}" class="mt-4">
-        <div class="mb-3">
-            <input type="text" name="flag" placeholder="Entrez le flag ici" class="form-control">
-        </div>
-        <button type="submit" class="btn btn-primary">Soumettre</button>
-    </form>
-{% endif %}
+<form method="post" action="{{ url_for('verifier_flag', uid_challenge=challenge.uid_challenge) }}" class="mt-4">
+    <div class="mb-3">
+        <input type="text" name="flag" {% if challenge in current_user.challenges_valides %} placeholder="Challenge déjà validé" class="form-control" disabled {% else %} placeholder="Entrez le flag ici" class="form-control" {% endif %} >
+    </div>
+    <button type="submit" class="btn btn-primary" {% if challenge in current_user.challenges_valides %} disabled {% endif %}>Soumettre</button>
+</form>
 
 <div class="mt-4">
     <h4>Cours Associés</h4>
@@ -35,11 +31,13 @@
     </ul>      
 </div>
 
+{% if current_user.is_authenticated and current_user.role == 2 %}
 <div class="mt-4 d-flex align-items-center gap-2">
     <a href="{{ url_for('modifier_challenge', uid_challenge=challenge.uid_challenge) }}" class="btn btn-primary">Modifier</a>
     <form action="{{ url_for('supprimer_challenge', uid_challenge=challenge.uid_challenge) }}" method="post">
         <button type="submit" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce challenge ?');">Supprimer</button>
     </form>
 </div>
+{% endif %}
 
 {% endblock %}

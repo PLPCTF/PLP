@@ -35,13 +35,14 @@
             {% endfor %}
         </div>
 
-        <div class="mb-3">
-            {{ form.cours_associes.label(class="form-label") }}
-            {{ form.cours_associes(class="form-control" + (" is-invalid" if form.cours_associes.errors else "")) }}
-            {% for error in form.cours_associes.errors %}
-                <div class="invalid-feedback">{{ error }}</div>
-            {% endfor %}
-        </div>
+        <div class="form-group">
+            <label for="cours_id" class="form-control-label">Sélectionner un cours</label>
+            <select id="cours_id" name="cours_id" class="form-control">
+                {% for cours in cours_list %}
+                    <option value="{{ cours.uid_cours }}">{{ cours.titre_cours }}</option>
+                {% endfor %}
+            </select>
+        </div> 
 
         <div class="mb-3">
             {{ form.indice.label(class="form-label") }}

@@ -3,7 +3,7 @@
 {% block title %}Profil{% endblock %}
 
 {% block content %}
-    <h1>Profil de {{ utilisateur.nom_utilisateur }}</h1>
+    <h1>Profil de {{ current_user.nom_utilisateur }}</h1>
 
     <div class="container">
         <ul class="nav nav-tabs">
@@ -122,8 +122,8 @@
                     {{ form.sauvegarder_modifications(class="btn btn-primary") }}
                 </form>
             </div>
-            <div id="cours" class="container tab-pane active">
-                {% for cours in utilisateur.cours_suivis %}
+            <div id="cours" class="container tab-pane">
+                {% for cours in current_user.cours_suivis %}
                 <div class="col-md-4 mb-3">
                     <div class="card">
                         <div class="card-body">
@@ -135,8 +135,8 @@
                 </div>
                 {% endfor %}
             </div>
-            <div id="challenges" class="container tab-pane active">
-                {% for challenge in utilisateur.challenges_valides %}
+            <div id="challenges" class="container tab-pane">
+                {% for challenge in current_user.challenges_valides %}
                 <div class="col-md-4 mb-3">
                     <div class="card">
                         <div class="card-body">

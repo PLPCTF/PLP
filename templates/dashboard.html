@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+{% extends 'base.html' %}
+
+
+{% block title %}
+    {% if est_modification %}Modifier un cours{% else %}Créer un nouveau cours{% endif %}
+{% endblock %}
+
+{% block content %}
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dashboard</title>
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+        <!-- Chart.js -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <!-- Your custom CSS -->
+        <link rel="stylesheet" href="styles.css">
+    </head>
+    <body>
+
+    
+
+    <div class="container mt-4">
+        <h1>Dashboard</h1>
+        <div class="row">
+            <div class="col-md-6">
+                <h2>Nombre de points : {{ user_stats.total_points }}</h2>
+                <canvas id="myPieChart1"></canvas>
+            </div>
+            <div class="col-md-6">
+                <h2>Pourcentage d'avancement par catégorie</h2>
+                <canvas id="myPieChart2"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+    <script>
+        // Récupérez les données des pourcentages d'avancement pour chaque catégorie
+        var categoryProgress = {{ category_progress_percentages | tojson }};
+
+        // Récupérez les noms des catégories
+        var categoryNames = Object.keys(categoryProgress);
+
+        // Récupérez les pourcentages d'avancement
+        var progressValues = Object.values(categoryProgress);
+
+        // Créez un tableau de couleurs pour les tranches du graphique
+        var colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
+
+        // Initialisez le contexte du graphique en camembert pour la progression par catégorie
+        var ctx2 = document.getElementById('myPieChart2').getContext('2d');
+
+        // Initialisez le graphique en camembert pour la progression par catégorie
+        var myPieChart2 = new Chart(ctx2, {
+            type: 'pie',
+            data: {
+                labels: categoryNames,
+                datasets: [{
+                    data: progressValues,
+                    backgroundColor: colors
+                }]
+            },
+            options: {
+                responsive: true,
+                legend: {
+                    position: 'bottom'
+                },
+                title: {
+                    display: true,
+                    text: 'Pourcentage d\'avancement par catégorie'
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            }
+        });
+
+        // Récupérez les données du nombre de points
+        var totalPoints = {{ user_stats.total_points }};
+
+        // Initialisez le contexte du graphique en camembert pour le nombre de points
+        var ctx1 = document.getElementById('myPieChart1').getContext('2d');
+
+        // Initialisez le graphique en camembert pour le nombre de points
+        var myPieChart1 = new Chart(ctx1, {
+            type: 'pie',
+            data: {
+                labels: ['Points restants', 'Points utilisés'],
+                datasets: [{
+                    data: [totalPoints, 1000 - totalPoints],
+                    backgroundColor: ['#36A2EB', '#FF6384']
+                }]
+            },
+            options: {
+                responsive: true,
+                legend: {
+                    position: 'bottom'
+                },
+                title: {
+                    display: true,
+                    text: 'Nombre de points'
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            }
+        });
+    </script>
+{% endblock %}
+</body>
+</html>
