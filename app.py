@@ -6,6 +6,7 @@ from flask import Flask, render_template, redirect, url_for, flash, session, req
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed
 from flask_login import LoginManager, current_user, login_required, login_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from wtforms import StringField, PasswordField, SubmitField, validators, TextAreaField, IntegerField, SelectMultipleField, widgets, SelectField
@@ -14,8 +15,10 @@ from wtforms.validators import ValidationError, DataRequired
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 from functools import wraps
-
-
+from collections import defaultdict
+from wtforms.ext.sqlalchemy.fields import QuerySelectField
+from flask import send_from_directory
+import os
 ## Configuration
 
 app = Flask(__name__)
@@ -62,7 +65,7 @@ challenges_cours = db.Table('challenges_cours',
 
 class FormulaireInscription(FlaskForm):
     email = StringField('Email', validators=[validators.DataRequired(), validators.Email()])
-    classe = StringField('Classe')
+    classe = SelectField('Classe', choices=[('1A', '1A'), ('2A', '2A'), ('3A', '3A'), ('4A', '4A'), ('5A', '5A'), ('license', 'License'), ('master', 'Master'), ('professeur', 'Professeur')], validators=[DataRequired()])
     nom = StringField('Nom', validators=[validators.DataRequired()])
     prenom = StringField('Prénom', validators=[validators.DataRequired()])
     nom_utilisateur = StringField('Nom d\'utilisateur', validators=[validators.DataRequired(), validators.Length(min=4, max=20)])
@@ -96,11 +99,13 @@ class FormulaireProfil(FlaskForm):
     sauvegarder_modifications = SubmitField('Sauvegarder les modifications')
 
 class FormulaireCours(FlaskForm):
-    titre_cours = StringField('Titre', validators=[DataRequired()])
-    categorie_cours = StringField('Catégorie', validators=[DataRequired()])
-    description_cours = TextAreaField('Description', validators=[DataRequired()])
-    lien = StringField('Lien de téléchargement', validators=[DataRequired()])
-    submit = SubmitField('Créer Cours')
+    titre_cours = StringField('Titre du cours', validators=[DataRequired()])
+    categorie_cours = QuerySelectField('Catégorie du cours', query_factory=lambda: Categorie.query.all(), allow_blank=True, get_label='nom')
+    nouvelle_categorie = StringField('Nouvelle catégorie')
+    description_cours = TextAreaField('Description du cours', validators=[DataRequired()])
+    lien = StringField('Lien')
+    fichier = FileField('Fichier du cours')
+    submit = SubmitField('Créer le cours')
 
 class FormulaireChallenge(FlaskForm):
     titre_challenge = StringField('Titre', validators=[DataRequired()])
@@ -166,6 +171,9 @@ class Utilisateur(db.Model):
 
     def is_anonymous(self):
         return False
+class Categorie(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String(50), unique=True, nullable=False)
 
 class Cours(db.Model):
     uid_cours = db.Column(db.Integer, primary_key=True)
@@ -173,6 +181,7 @@ class Cours(db.Model):
     categorie_cours = db.Column(db.String(100), nullable=False)
     description_cours = db.Column(db.Text, nullable=False)
     lien = db.Column(db.String(100), nullable=False)
+    fichier = db.Column(db.String(100))  # Champ pour le fichier
 
 class Challenge(db.Model):
     uid_challenge = db.Column(db.Integer, primary_key=True)
@@ -422,22 +431,81 @@ def classement():
 @login_required
 def afficher_cours():
     cours_list = Cours.query.all()  # Récupère tous les cours
-    return render_template('cours.html', cours_list=cours_list)
+    cours_par_categorie = defaultdict(list)
+    for cours in cours_list:
+        cours_par_categorie[cours.categorie_cours].append(cours)
+    return render_template('cours.html', cours_par_categorie=cours_par_categorie)
+
+@app.route('/telecharger/<path:filename>')
+def telecharger_fichier(filename):
+    # Spécifiez le répertoire dans lequel se trouvent les fichiers à télécharger
+    dossier_telechargements = 'C:/Users/alexa/OneDrive/Documents/plp/test_upload/'
+
+    return send_from_directory(dossier_telechargements, filename)
+
 
 @app.route('/cours/creer-cours', methods=['GET', 'POST'])
 @admin_required
 def creer_cours():
     form = FormulaireCours()
-    if form.validate_on_submit():
-        nouveau_cours = Cours(titre_cours=form.titre_cours.data,
-                              categorie_cours=form.categorie_cours.data,
-                              description_cours=form.description_cours.data,
-                              lien=form.lien.data)
-        db.session.add(nouveau_cours)
-        db.session.commit()
-        flash('Le cours a été créé avec succès.', 'success')
-        return redirect(url_for('afficher_cours'))
+
+    if request.method == 'POST':
+        if form.validate_on_submit():
+            nouvelle_cat = form.nouvelle_categorie.data.strip()
+            categorie_selectionnee = None
+            
+            if form.categorie_cours.data:  
+                # Si une catégorie existante est sélectionnée
+                categorie_selectionnee = form.categorie_cours.data.nom.lower().strip()
+
+            if nouvelle_cat:  
+                # Si une nouvelle catégorie est entrée
+                nouvelle_cat = nouvelle_cat.lower().strip()  
+                # Vérifier si la nouvelle catégorie existe déjà
+                categorie_existe = Categorie.query.filter_by(nom=nouvelle_cat).first()
+                if categorie_existe:
+                    # Si la nouvelle catégorie existe déjà, utiliser la catégorie existante
+                    categorie_selectionnee = nouvelle_cat
+                else:
+                    # Si la nouvelle catégorie n'existe pas, l'ajouter à la base de données
+                    nouvelle_categorie = Categorie(nom=nouvelle_cat)
+                    db.session.add(nouvelle_categorie)
+                    db.session.commit()
+                    flash(f'La catégorie "{nouvelle_cat.capitalize()}" a été ajoutée avec succès.', 'success')
+                    categorie_selectionnee = nouvelle_cat
+
+            # Télécharger le fichier s'il est présent dans la requête
+            fichier = None
+            if 'fichier' in request.files:
+                fichier = request.files['fichier']
+                if fichier.filename != '':
+                    # Spécifiez le répertoire où vous souhaitez enregistrer les fichiers téléchargés
+                    dossier_uploads = 'C:/Users/alexa/OneDrive/Documents/plp/test_upload/'
+                    # Assurez-vous que le répertoire existe, sinon créez-le
+                    if not os.path.exists(dossier_uploads):
+                        os.makedirs(dossier_uploads)
+                    # Enregistrez le fichier dans le répertoire spécifié
+                    chemin_fichier = os.path.join(dossier_uploads, fichier.filename)
+                    fichier.save(chemin_fichier)
+
+            # Créer le nouveau cours avec toutes les données du formulaire
+            nouveau_cours = Cours(
+                titre_cours=form.titre_cours.data,
+                categorie_cours=categorie_selectionnee,
+                description_cours=form.description_cours.data,
+                fichier=fichier.filename if fichier else None,  # Enregistrer le nom du fichier dans la base de données
+                lien=form.lien.data
+            )
+            db.session.add(nouveau_cours)
+            db.session.commit()
+            flash('Le cours a été créé avec succès.', 'success')
+            return redirect(url_for('afficher_cours'))
+
     return render_template('creer_cours.html', form=form, est_modification=False)
+
+
+
+
 
 @app.route('/cours/modifier/<int:uid_cours>', methods=['GET', 'POST'])
 @admin_required
