@@ -11,6 +11,14 @@
 </div>
 
 <div class="container">
+    <!-- Barre de recherche -->
+    <form id="searchForm">
+        <input type="text" id="searchInput" class="form-control mb-3" placeholder="Rechercher un cours...">
+    </form>
+
+    <!-- Affichage des cours par catégorie -->
+    {% for categorie, cours_list in cours_par_categorie.items() %}
+    <h2>{{ categorie }}</h2>
     <div class="row">
         {% for cours in cours_list %}
         <div class="col-md-4 mb-3">
@@ -20,11 +28,28 @@
                         <h5 class="card-title text-dark">{{ cours.titre_cours }}</h5>
                     </a>
                     <p class="card-text">{{ cours.description_cours | truncate(50) }}</p>
-                    <p class="text-muted">Catégories: {{ cours.categorie_cours }}</p>
+                    <p class="text-muted">Catégorie: {{ cours.categorie_cours }}</p>
                 </div>
             </div>
         </div>
         {% endfor %}
     </div>
+    {% endfor %}
 </div>
+
+<!-- JavaScript pour la recherche en temps réel -->
+<script>
+    $(document).ready(function(){
+        $("#searchInput").on("keyup", function() {
+            var value = $(this).val().toLowerCase();
+            $(".card").filter(function() {
+                var titre = $(this).find(".card-title").text().toLowerCase();
+                var description = $(this).find(".card-text").text().toLowerCase();
+                var categorie = $(this).find(".text-muted").text().toLowerCase();
+                $(this).toggle(titre.indexOf(value) > -1 || description.indexOf(value) > -1 || categorie.indexOf(value) > -1);
+            });
+        });
+    });
+</script>
+
 {% endblock %}

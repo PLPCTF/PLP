@@ -18,8 +18,9 @@
                 <div class="card-body d-flex flex-column">
                     <a href="{{ url_for('detail_challenge', uid_challenge=challenge.uid_challenge) }}" class="text-dark text-decoration-none mb-2">
                         <h5 class="card-title">{{ challenge.titre_challenge }}</h5>
+                        <span class="badge bg-primary rounded-pill mb-2">{{ challenge.value }} points</span>
                     </a>
-                    <span class="badge bg-primary rounded-pill mb-2">{{ challenge.value }} points</span>
+                    
                     <p class="card-text flex-grow-1">{{ challenge.description_challenge | truncate(50) }}</p>
                     <p class="text-muted">Catégories: {{ challenge.categorie_challenge }}</p>
                 </div>

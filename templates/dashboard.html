@@ -1,123 +1,175 @@
-<!DOCTYPE html>
-<html lang="fr">
-
 {% extends 'base.html' %}
 
-
-{% block title %}
-    {% if est_modification %}Modifier un cours{% else %}Créer un nouveau cours{% endif %}
-{% endblock %}
+{% block title %} Dashboard {% endblock %}
 
 {% block content %}
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Dashboard</title>
-        <!-- Bootstrap CSS -->
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-        <!-- Chart.js -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <!-- Your custom CSS -->
-        <link rel="stylesheet" href="styles.css">
-    </head>
-    <body>
 
-    
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <div class="container mt-4">
-        <h1>Dashboard</h1>
-        <div class="row">
-            <div class="col-md-6">
-                <h2>Nombre de points : {{ user_stats.total_points }}</h2>
-                <canvas id="myPieChart1"></canvas>
-            </div>
-            <div class="col-md-6">
-                <h2>Pourcentage d'avancement par catégorie</h2>
-                <canvas id="myPieChart2"></canvas>
-            </div>
+
+<div class="container mt-5">
+    <h1 class="mb-4">Dashboard</h1>
+    <!-- Liste déroulante pour choisir un utilisateur -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <form action="/dashboard" method="get">
+                <div class="form-group">
+                    <select class="form-select" name="utilisateur_id" onchange="this.form.submit()">
+                        <option value="">Sélectionnez un utilisateur</option>
+                        {% for utilisateur in utilisateurs %}
+                        <option value="{{ utilisateur.uid_utilisateur }}" {% if utilisateur.uid_utilisateur|string == utilisateur_id %}selected{% endif %}>
+                            {{ utilisateur.nom_utilisateur }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Bootstrap JS and dependencies -->
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    {% if data_for_chart|length > 0 %}
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title text-center">Répartition des points par catégorie</h3> <!-- Titre du graphique -->
+                        <canvas id="myChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+            Cet utilisateur n'a validé aucun challenge.
+        </div>
+    {% endif %}
 
-    <script>
-        // Récupérez les données des pourcentages d'avancement pour chaque catégorie
-        var categoryProgress = {{ category_progress_percentages | tojson }};
+    {% if completion_rate_for_chart|length > 0 %}
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h3 class="card-title text-center">Taux de complétion par catégorie (%)</h3>
+                        <canvas id="completionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 
-        // Récupérez les noms des catégories
-        var categoryNames = Object.keys(categoryProgress);
+</div>
 
-        // Récupérez les pourcentages d'avancement
-        var progressValues = Object.values(categoryProgress);
+<script>
+document.addEventListener('DOMContentLoaded', function() {
 
-        // Créez un tableau de couleurs pour les tranches du graphique
-        var colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
+    // Graphique "Répartition des points par catégorie"
 
-        // Initialisez le contexte du graphique en camembert pour la progression par catégorie
-        var ctx2 = document.getElementById('myPieChart2').getContext('2d');
+    var dataForChart = JSON.parse('{{ data_for_chart | tojson | safe }}');
+    var ctx = document.getElementById('myChart').getContext('2d');
+    if(Object.keys(dataForChart).length > 0) {
+        var categories = Object.keys(dataForChart);
+        var data = categories.map(function(categorie) {
+            return dataForChart[categorie].points_obtenus;
+        });
 
-        // Initialisez le graphique en camembert pour la progression par catégorie
-        var myPieChart2 = new Chart(ctx2, {
+        new Chart(ctx, {
             type: 'pie',
             data: {
-                labels: categoryNames,
+                labels: categories,
                 datasets: [{
-                    data: progressValues,
-                    backgroundColor: colors
+                    label: 'Points par catégorie',
+                    data: data,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.8)', // Rouge
+                        'rgba(54, 162, 235, 0.8)', // Bleu
+                        'rgba(255, 206, 86, 0.8)', // Jaune
+                        'rgba(75, 192, 192, 0.8)', // Vert
+                        'rgba(153, 102, 255, 0.8)', // Violet
+                        'rgba(255, 159, 64, 0.8)', // Orange
+                        'rgba(199, 199, 199, 0.8)', // Gris
+                        // Ajoutez plus de couleurs si nécessaire
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)', // Bordure Rouge
+                        'rgba(54, 162, 235, 1)', // Bordure Bleu
+                        'rgba(255, 206, 86, 1)', // Bordure Jaune
+                        'rgba(75, 192, 192, 1)', // Bordure Vert
+                        'rgba(153, 102, 255, 1)', // Bordure Violet
+                        'rgba(255, 159, 64, 1)', // Bordure Orange
+                        'rgba(199, 199, 199, 1)', // Bordure Gris
+                        // Correspondances de bordure pour les couleurs supplémentaires
+                    ],
+                    borderWidth: 1
                 }]
             },
             options: {
-                responsive: true,
-                legend: {
-                    position: 'bottom'
-                },
                 title: {
                     display: true,
-                    text: 'Pourcentage d\'avancement par catégorie'
+                    text: 'Points obtenus par catégorie'
                 },
-                animation: {
-                    animateScale: true,
-                    animateRotate: true
-                }
+                responsive: true,
+                maintainAspectRatio: true,
             }
         });
+    }
 
-        // Récupérez les données du nombre de points
-        var totalPoints = {{ user_stats.total_points }};
+    // Graphique "Taux de complétion par catégorie"
 
-        // Initialisez le contexte du graphique en camembert pour le nombre de points
-        var ctx1 = document.getElementById('myPieChart1').getContext('2d');
+    var completionData = JSON.parse('{{ completion_rate_for_chart | tojson | safe }}');
+    var completionCtx = document.getElementById('completionChart').getContext('2d');
+    if(Object.keys(completionData).length > 0) {
+        var completionCategories = Object.keys(completionData);
+        var completionRates = completionCategories.map(function(categorie) {
+            return completionData[categorie].completion_rate;
+        });
 
-        // Initialisez le graphique en camembert pour le nombre de points
-        var myPieChart1 = new Chart(ctx1, {
-            type: 'pie',
+        new Chart(completionCtx, {
+            type: 'bar', // Type de graphique
             data: {
-                labels: ['Points restants', 'Points utilisés'],
+                labels: completionCategories,
                 datasets: [{
-                    data: [totalPoints, 1000 - totalPoints],
-                    backgroundColor: ['#36A2EB', '#FF6384']
+                    label: 'Taux de complétion (%)',
+                    data: completionRates,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.8)', // Rouge
+                        'rgba(54, 162, 235, 0.8)', // Bleu
+                        'rgba(255, 206, 86, 0.8)', // Jaune
+                        'rgba(75, 192, 192, 0.8)', // Vert
+                        'rgba(153, 102, 255, 0.8)', // Violet
+                        'rgba(255, 159, 64, 0.8)', // Orange
+                        'rgba(199, 199, 199, 0.8)', // Gris
+                        // Continuez avec d'autres couleurs si vous avez plus de catégories
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)', // Bordure Rouge
+                        'rgba(54, 162, 235, 1)', // Bordure Bleu
+                        'rgba(255, 206, 86, 1)', // Bordure Jaune
+                        'rgba(75, 192, 192, 1)', // Bordure Vert
+                        'rgba(153, 102, 255, 1)', // Bordure Violet
+                        'rgba(255, 159, 64, 1)', // Bordure Orange
+                        'rgba(199, 199, 199, 1)', // Bordure Gris
+                        // Correspondances de bordure pour les couleurs supplémentaires
+                    ],
+                    borderWidth: 1
                 }]
             },
             options: {
-                responsive: true,
-                legend: {
-                    position: 'bottom'
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
                 },
+                responsive: true,
+                maintainAspectRatio: true,
                 title: {
                     display: true,
-                    text: 'Nombre de points'
-                },
-                animation: {
-                    animateScale: true,
-                    animateRotate: true
+                    text: 'Taux de complétion par catégorie'
                 }
             }
         });
-    </script>
+    } // Cette accolade ferme le bloc if pour le deuxième graphique
+});
+</script>
+    
+
 {% endblock %}
-</body>
-</html>

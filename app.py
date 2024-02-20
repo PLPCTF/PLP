@@ -1,11 +1,14 @@
 ## Imports
 
 import secrets
+import os
+
 from datetime import datetime, timedelta
-from flask import Flask, render_template, redirect, url_for, flash, session, request
+from flask import Flask, render_template, redirect, url_for, flash, session, request, send_from_directory
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed
 from flask_login import LoginManager, current_user, login_required, login_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from wtforms import StringField, PasswordField, SubmitField, validators, TextAreaField, IntegerField, SelectMultipleField, widgets, SelectField
@@ -14,6 +17,9 @@ from wtforms.validators import ValidationError, DataRequired
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 from functools import wraps
+from wtforms.ext.sqlalchemy.fields import QuerySelectField
+from sqlalchemy.sql import func
+from collections import defaultdict
 
 
 ## Configuration
@@ -62,13 +68,21 @@ challenges_cours = db.Table('challenges_cours',
 
 class FormulaireInscription(FlaskForm):
     email = StringField('Email', validators=[validators.DataRequired(), validators.Email()])
-    classe = StringField('Classe')
+    classe = SelectField('Classe', choices=[('1A', '1A'), ('2A', '2A'), ('3A', '3A'), ('4A', '4A'), ('5A', '5A'), ('license', 'License'), ('master', 'Master'), ('professeur', 'Professeur')], validators=[DataRequired()])
     nom = StringField('Nom', validators=[validators.DataRequired()])
     prenom = StringField('Prénom', validators=[validators.DataRequired()])
     nom_utilisateur = StringField('Nom d\'utilisateur', validators=[validators.DataRequired(), validators.Length(min=4, max=20)])
     mot_de_passe = PasswordField('Mot de passe', validators=[validators.DataRequired(), validators.Length(min=8)])
     confirmer_mot_de_passe = PasswordField('Confirmer le mot de passe', validators=[validators.DataRequired(), validators.EqualTo('mot_de_passe', message='Les mots de passe doivent correspondre.')])
     inscription = SubmitField('S\'inscrire')
+
+    def validate_nom_utilisateur(self, nom_utilisateur):
+        if Utilisateur.query.filter_by(nom_utilisateur=nom_utilisateur.data).first():
+            raise ValidationError('Ce nom d\'utilisateur est déjà pris.')
+
+    def validate_email(self, email):
+        if Utilisateur.query.filter_by(email=email.data).first():
+            raise ValidationError('Cette adresse mail est déjà prise.')
 
 class FormulaireConnexion(FlaskForm):
     nom_utilisateur = StringField('Nom d\'utilisateur', validators=[validators.DataRequired()])
@@ -97,16 +111,18 @@ class FormulaireProfil(FlaskForm):
 
 class FormulaireCours(FlaskForm):
     titre_cours = StringField('Titre', validators=[DataRequired()])
-    categorie_cours = StringField('Catégorie', validators=[DataRequired()])
+    categorie_cours = QuerySelectField('Catégorie du cours', query_factory=lambda: Categorie.query.all(), allow_blank=True, get_label='nom')
+    nouvelle_categorie = StringField('Nouvelle catégorie')
     description_cours = TextAreaField('Description', validators=[DataRequired()])
-    lien = StringField('Lien de téléchargement', validators=[DataRequired()])
+    lien = StringField('Lien de téléchargement')
+    fichier = FileField('Fichier du cours')
     submit = SubmitField('Créer Cours')
 
 class FormulaireChallenge(FlaskForm):
     titre_challenge = StringField('Titre', validators=[DataRequired()])
     description_challenge = TextAreaField('Description', validators=[DataRequired()])
     categorie_challenge = StringField('Catégorie', validators=[DataRequired()])
-    cours_associes = SelectMultipleField('Cours Associés', choices=[], widget=ListWidget(prefix_label=False), option_widget=CheckboxInput(), coerce=int)
+    cours_associe = SelectField('Cours Associé', coerce=int)
     indice = TextAreaField('Indice', validators=[DataRequired()])
     value = IntegerField('Valeur', validators=[DataRequired()])
     lien_ctfd = StringField('Lien CTFD', validators=[DataRequired()])
@@ -167,12 +183,17 @@ class Utilisateur(db.Model):
     def is_anonymous(self):
         return False
 
+class Categorie(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String(50), unique=True, nullable=False)
+
 class Cours(db.Model):
     uid_cours = db.Column(db.Integer, primary_key=True)
     titre_cours = db.Column(db.String(100), nullable=False)
     categorie_cours = db.Column(db.String(100), nullable=False)
     description_cours = db.Column(db.Text, nullable=False)
     lien = db.Column(db.String(100), nullable=False)
+    fichier = db.Column(db.String(100))  # Champ pour le fichier
 
 class Challenge(db.Model):
     uid_challenge = db.Column(db.Integer, primary_key=True)
@@ -197,18 +218,6 @@ def admin_required(f):
 @login_manager.user_loader
 def load_user(uid_utilisateur):
     return Utilisateur.query.get(int(uid_utilisateur))
-
-def validate_nom_utilisateur(self, field):
-    if current_user.is_authenticated and field.data != current_user.nom_utilisateur:
-        # Si l'utilisateur a fourni un nouveau nom d'utilisateur, vérifiez s'il est déjà pris
-        if Utilisateur.query.filter_by(nom_utilisateur=field.data).first():
-            raise ValidationError('Ce nom d\'utilisateur est déjà pris.')
-
-def validate_email(self, field):
-    if current_user.is_authenticated and field.data != current_user.email:
-        # Si l'utilisateur a fourni une adresse mail, vérifiez si elle est déjà prise
-        if Utilisateur.query.filter_by(email=field.data).first():
-            raise ValidationError('Cette adresse mail est déjà prise.')
 
 def create_app():
     with app.app_context():
@@ -422,21 +431,76 @@ def classement():
 @login_required
 def afficher_cours():
     cours_list = Cours.query.all()  # Récupère tous les cours
-    return render_template('cours.html', cours_list=cours_list)
+    cours_par_categorie = defaultdict(list)
+    for cours in cours_list:
+        cours_par_categorie[cours.categorie_cours].append(cours)
+    return render_template('cours.html', cours_par_categorie=cours_par_categorie)
+
+@app.route('/telecharger/<path:filename>')
+@login_required
+def telecharger_fichier(filename):
+    # Spécifiez le répertoire dans lequel se trouvent les fichiers à télécharger
+    dossier_telechargements = 'D:/Windows/Data/INSA/5A/PLP/Site/static/cours'
+
+    return send_from_directory(dossier_telechargements, filename)
 
 @app.route('/cours/creer-cours', methods=['GET', 'POST'])
 @admin_required
 def creer_cours():
     form = FormulaireCours()
-    if form.validate_on_submit():
-        nouveau_cours = Cours(titre_cours=form.titre_cours.data,
-                              categorie_cours=form.categorie_cours.data,
-                              description_cours=form.description_cours.data,
-                              lien=form.lien.data)
-        db.session.add(nouveau_cours)
-        db.session.commit()
-        flash('Le cours a été créé avec succès.', 'success')
-        return redirect(url_for('afficher_cours'))
+
+    if request.method == 'POST':
+        if form.validate_on_submit():
+            nouvelle_cat = form.nouvelle_categorie.data.strip()
+            categorie_selectionnee = None
+
+            if form.categorie_cours.data:
+                # Si une catégorie existante est sélectionnée
+                categorie_selectionnee = form.categorie_cours.data.nom.lower().strip()
+
+            if nouvelle_cat:
+                # Si une nouvelle catégorie est entrée
+                nouvelle_cat = nouvelle_cat.lower().strip()
+                # Vérifier si la nouvelle catégorie existe déjà
+                categorie_existe = Categorie.query.filter_by(nom=nouvelle_cat).first()
+                if categorie_existe:
+                    # Si la nouvelle catégorie existe déjà, utiliser la catégorie existante
+                    categorie_selectionnee = nouvelle_cat
+                else:
+                    # Si la nouvelle catégorie n'existe pas, l'ajouter à la base de données
+                    nouvelle_categorie = Categorie(nom=nouvelle_cat)
+                    db.session.add(nouvelle_categorie)
+                    db.session.commit()
+                    flash(f'La catégorie "{nouvelle_cat.capitalize()}" a été ajoutée avec succès.', 'success')
+                    categorie_selectionnee = nouvelle_cat
+
+            # Télécharger le fichier s'il est présent dans la requête
+            fichier = None
+            if 'fichier' in request.files:
+                fichier = request.files['fichier']
+                if fichier.filename != '':
+                    # Spécifiez le répertoire où vous souhaitez enregistrer les fichiers téléchargés
+                    dossier_uploads = 'D:/Windows/Data/INSA/5A/PLP/Site/static/cours'
+                    # Assurez-vous que le répertoire existe, sinon créez-le
+                    if not os.path.exists(dossier_uploads):
+                        os.makedirs(dossier_uploads)
+                    # Enregistrez le fichier dans le répertoire spécifié
+                    chemin_fichier = os.path.join(dossier_uploads, fichier.filename)
+                    fichier.save(chemin_fichier)
+
+            # Créer le nouveau cours avec toutes les données du formulaire
+            nouveau_cours = Cours(
+                titre_cours=form.titre_cours.data,
+                categorie_cours=categorie_selectionnee,
+                description_cours=form.description_cours.data,
+                fichier=fichier.filename if fichier else None,  # Enregistrer le nom du fichier dans la base de données
+                lien=form.lien.data
+            )
+            db.session.add(nouveau_cours)
+            db.session.commit()
+            flash('Le cours a été créé avec succès.', 'success')
+            return redirect(url_for('afficher_cours'))
+
     return render_template('creer_cours.html', form=form, est_modification=False)
 
 @app.route('/cours/modifier/<int:uid_cours>', methods=['GET', 'POST'])
@@ -502,9 +566,9 @@ def afficher_challenges():
 @admin_required
 def ajouter_challenge():
     form = FormulaireChallenge()
-    form.cours_associes.choices = [(c.uid_cours, c.titre_cours) for c in Cours.query.all()]  # Assurez-vous d'avoir ce champ dans votre formulaire
+    form.cours_associe.choices = [(c.uid_cours, c.titre_cours) for c in Cours.query.order_by(Cours.titre_cours).all()]
+
     if form.validate_on_submit():
-        cours_choisis = Cours.query.filter(Cours.uid_cours.in_(form.cours_associes.data)).all()
         nouveau_challenge = Challenge(
             titre_challenge=form.titre_challenge.data,
             categorie_challenge=form.categorie_challenge.data,
@@ -512,15 +576,20 @@ def ajouter_challenge():
             indice=form.indice.data,
             value=form.value.data,
             lien_ctfd=form.lien_ctfd.data,
-            flag=form.flag.data
+            flag=form.flag.data,
         )
-        for cours in cours_choisis:
+
+        # Associer le cours sélectionné avec le challenge
+        cours = Cours.query.get(form.cours_associe.data)
+        if cours:
             nouveau_challenge.cours.append(cours)
+
         db.session.add(nouveau_challenge)
         db.session.commit()
         flash('Le challenge a été ajouté avec succès.', 'success')
         return redirect(url_for('afficher_challenges'))
-    return render_template('ajouter_challenge.html', form=form, est_modification=False)
+
+    return render_template('ajouter_challenge.html', form=form)
 
 @app.route('/challenges/modifier/<int:uid_challenge>', methods=['GET', 'POST'])
 @admin_required
@@ -575,40 +644,57 @@ def verifier_flag(uid_challenge):
 ## Dashboard
 
 @app.route('/utilisateurs')
-@login_required
+@admin_required
 def page_utilisateur():
     utilisateurs = Utilisateur.query.all()
     return render_template('utilisateurs.html', utilisateurs=utilisateurs)
 
-@app.route('/dashboard')
+@app.route('/dashboard', methods=['GET'])
 @login_required
 def dashboard():
-    # Statistiques en dur pour tester
-    user_stats = {
-        'total_points': 750,
-        'category_progress': {
-            'Web': {'completed_challenges': 1, 'total_challenges': 3},
-            'Brut force': {'completed_challenges': 4, 'total_challenges': 4},
-            'SQL': {'completed_challenges': 2, 'total_challenges': 5},
-            'Sécurité Applicative': {'completed_challenges': 3, 'total_challenges': 6},
-            'Réseau': {'completed_challenges': 0, 'total_challenges': 2}
+    utilisateurs = Utilisateur.query.all()  # Récupérer tous les utilisateurs pour la liste déroulante
+    utilisateur_id = request.args.get('utilisateur_id', type=int)  # Gardez l'ID en tant qu'entier si votre DB le stocke ainsi
+
+    data_for_chart = {}
+    completion_rate_for_chart = {}
+
+    if utilisateur_id:
+        # Points obtenus par l'utilisateur dans chaque catégorie
+        points_obtenus = db.session.query(
+            Challenge.categorie_challenge,
+            func.sum(Challenge.value).label('points_obtenus')
+        ).join(utilisateur_challenge, Challenge.uid_challenge == utilisateur_challenge.c.challenge_uid) \
+         .filter(utilisateur_challenge.c.utilisateur_uid == utilisateur_id) \
+         .group_by(Challenge.categorie_challenge) \
+         .all()
+
+        # Total des points possibles dans chaque catégorie
+        total_points = db.session.query(
+            Challenge.categorie_challenge,
+            func.sum(Challenge.value).label('total_points')
+        ).group_by(Challenge.categorie_challenge) \
+         .all()
+
+        # Convertir total_points en dictionnaire
+        total_points_dict = {categorie: total_points for categorie, total_points in total_points}
+
+        # Fusionner les données dans un format approprié pour le graphique
+        data_for_chart = {
+            categorie: {
+                'points_obtenus': points,
+                'total_points': total_points_dict.get(categorie, 0)
+            } for categorie, points in points_obtenus
         }
-    }
 
-    # Calculez le pourcentage de progression pour chaque catégorie
-    category_progress_percentages = {}
-    points_gained_per_category = {}
-    for category, progress in user_stats['category_progress'].items():
-        completed = progress['completed_challenges']
-        total = progress['total_challenges']
-        if total != 0:
-            progress_percentage = (completed / total) * 100
-        else:
-            progress_percentage = 0
-        category_progress_percentages[category] = progress_percentage
-        points_gained_per_category[category] = completed * 100  # Suppose que chaque challenge vaut 100 points
+        # Calculer le taux de complétion
+        completion_rate_for_chart = {
+            categorie: {
+                'completion_rate': (points / total_points_dict.get(categorie, 1)) * 100
+            } for categorie, points in points_obtenus
+        }
 
-    return render_template('dashboard.html', user_stats=user_stats, category_progress_percentages=category_progress_percentages, points_gained_per_category=points_gained_per_category)
+    return render_template('dashboard.html', utilisateurs=utilisateurs, data_for_chart=data_for_chart, completion_rate_for_chart=completion_rate_for_chart, utilisateur_id=utilisateur_id)
+
 
 @app.route('/deconnexion')
 @login_required
