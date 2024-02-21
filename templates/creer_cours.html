@@ -8,7 +8,8 @@
 <div class="container mt-4">
     <h1>{% if est_modification %}Modifier le cours{% else %}Créer un nouveau cours{% endif %}</h1>
 
-    <form method="post" action="{{ url_for('creer_cours') }}" enctype="multipart/form-data">
+    <form method="post" action="{{ url_for('modifier_cours', uid_cours=cours.uid_cours) if est_modification else url_for('creer_cours') }}" enctype="multipart/form-data">
+
         {{ form.hidden_tag() }}
 
         <!-- Champ pour télécharger un fichier -->
@@ -16,7 +17,6 @@
             {{ form.fichier.label(class="form-label") }}
             {{ form.fichier(class="form-control") }}
         </div>
-
 
         <!-- Champ pour les liens  -->
         <div class="mb-3">

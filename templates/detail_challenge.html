@@ -7,8 +7,9 @@
     <a href="{{ url_for('afficher_challenges') }}" class="text-dark text-decoration-none me-2">
         <i class="fas fa-arrow-left"></i>
     </a>
-    <h2 class="mb-0 flex-grow-1">{{ challenge.titre_challenge }}</h2>
-    <span class="text-muted ms-auto">{{ challenge.categorie_challenge }}</span>
+    <h2 class="mb-0">{{ challenge.titre_challenge }}</h2>
+    <span class="badge bg-primary rounded-pill ms-2">{{ challenge.value }} points</span>
+    <span class="text-muted ms-auto">{{ challenge.categorie.nom }}</span>
 </div>
 
 <div class="container mt-4">
@@ -23,11 +24,13 @@
 </form>
 
 <div class="mt-4">
-    <h4>Cours Associés</h4>
+    <h4>Cours Associé</h4>
     <ul>
-        {% for cours in challenge.cours %}
-            <li>{{ cours.titre_cours }}</li>
-        {% endfor %}
+        {% if challenge.cours %}
+            <li>{{ challenge.cours.titre_cours }}</li>
+        {% else %}
+            <p>Aucun cours associé</p>
+        {% endif %}
     </ul>      
 </div>
 

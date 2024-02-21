@@ -28,7 +28,7 @@
                         <h5 class="card-title text-dark">{{ cours.titre_cours }}</h5>
                     </a>
                     <p class="card-text">{{ cours.description_cours | truncate(50) }}</p>
-                    <p class="text-muted">Catégorie: {{ cours.categorie_cours }}</p>
+                    <p class="text-muted">Catégorie: {{ cours.categorie.nom }}</p>
                 </div>
             </div>
         </div>
@@ -39,17 +39,29 @@
 
 <!-- JavaScript pour la recherche en temps réel -->
 <script>
-    $(document).ready(function(){
-        $("#searchInput").on("keyup", function() {
-            var value = $(this).val().toLowerCase();
-            $(".card").filter(function() {
-                var titre = $(this).find(".card-title").text().toLowerCase();
-                var description = $(this).find(".card-text").text().toLowerCase();
-                var categorie = $(this).find(".text-muted").text().toLowerCase();
-                $(this).toggle(titre.indexOf(value) > -1 || description.indexOf(value) > -1 || categorie.indexOf(value) > -1);
-            });
-        });
-    });
+    // Fonction de recherche
+    function searchCours() {
+        // Récupérer la valeur de recherche depuis l'input
+        var searchText = document.getElementById("searchInput").value.toLowerCase();
+        // Sélectionner tous les titres de cours
+        var coursTitles = document.querySelectorAll(".card-title");
+        // Parcourir tous les titres de cours
+        for (var i = 0; i < coursTitles.length; i++) {
+            var title = coursTitles[i].innerText.toLowerCase();
+            var parentCard = coursTitles[i].closest(".card");
+            // Vérifier si le titre correspond à la recherche
+            if (title.includes(searchText)) {
+                // Afficher la carte si le titre correspond
+                parentCard.style.display = "block";
+            } else {
+                // Masquer la carte si le titre ne correspond pas
+                parentCard.style.display = "none";
+            }
+        }
+    }
+
+    // Ajouter un écouteur d'événement sur la saisie de l'utilisateur
+    document.getElementById("searchInput").addEventListener("input", searchCours);
 </script>
 
 {% endblock %}

@@ -20,6 +20,10 @@ from functools import wraps
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from sqlalchemy.sql import func
 from collections import defaultdict
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
 
 
 ## Configuration
@@ -59,11 +63,6 @@ utilisateur_cours = db.Table('utilisateur_cours',
 utilisateur_challenge = db.Table('utilisateur_challenge',
     db.Column('utilisateur_uid', db.Integer, db.ForeignKey('utilisateur.uid_utilisateur'), primary_key=True),
     db.Column('challenge_uid', db.Integer, db.ForeignKey('challenge.uid_challenge'), primary_key=True)
-)
-
-challenges_cours = db.Table('challenges_cours',
-    db.Column('challenge_id', db.Integer, db.ForeignKey('challenge.uid_challenge'), primary_key=True),
-    db.Column('cours_id', db.Integer, db.ForeignKey('cours.uid_cours'), primary_key=True)
 )
 
 class FormulaireInscription(FlaskForm):
@@ -111,7 +110,7 @@ class FormulaireProfil(FlaskForm):
 
 class FormulaireCours(FlaskForm):
     titre_cours = StringField('Titre', validators=[DataRequired()])
-    categorie_cours = QuerySelectField('Catégorie du cours', query_factory=lambda: Categorie.query.all(), allow_blank=True, get_label='nom')
+    categorie_cours = QuerySelectField('Catégorie', query_factory=lambda: Categorie.query.all(), allow_blank=True, get_label='nom', blank_text='Sélectionnez une catégorie')
     nouvelle_categorie = StringField('Nouvelle catégorie')
     description_cours = TextAreaField('Description', validators=[DataRequired()])
     lien = StringField('Lien de téléchargement')
@@ -121,13 +120,13 @@ class FormulaireCours(FlaskForm):
 class FormulaireChallenge(FlaskForm):
     titre_challenge = StringField('Titre', validators=[DataRequired()])
     description_challenge = TextAreaField('Description', validators=[DataRequired()])
-    categorie_challenge = StringField('Catégorie', validators=[DataRequired()])
-    cours_associe = SelectField('Cours Associé', coerce=int)
+    cours_associe = QuerySelectField('Cours Associé', query_factory=lambda: Cours.query.all(), get_label='titre_cours', allow_blank=True, blank_text='Sélectionnez un cours')
     indice = TextAreaField('Indice', validators=[DataRequired()])
     value = IntegerField('Valeur', validators=[DataRequired()])
     lien_ctfd = StringField('Lien CTFD', validators=[DataRequired()])
     flag = StringField('Flag', validators=[DataRequired()])
     submit = SubmitField('Ajouter Challenge')
+
 
 class FormulaireDemandeInscription(FlaskForm):
     email = StringField('Email', validators=[DataRequired()])
@@ -190,21 +189,25 @@ class Categorie(db.Model):
 class Cours(db.Model):
     uid_cours = db.Column(db.Integer, primary_key=True)
     titre_cours = db.Column(db.String(100), nullable=False)
-    categorie_cours = db.Column(db.String(100), nullable=False)
+    categorie_id = db.Column(db.Integer, db.ForeignKey('categorie.id'), nullable=False)
+    categorie = db.relationship('Categorie', backref='cours')
     description_cours = db.Column(db.Text, nullable=False)
     lien = db.Column(db.String(100), nullable=False)
-    fichier = db.Column(db.String(100))  # Champ pour le fichier
+    fichier = db.Column(db.String(100))
 
 class Challenge(db.Model):
     uid_challenge = db.Column(db.Integer, primary_key=True)
     titre_challenge = db.Column(db.String(100), nullable=False)
-    categorie_challenge = db.Column(db.String(100), nullable=False)
+    categorie_id = db.Column(db.Integer, db.ForeignKey('categorie.id'), nullable=False)
+    categorie = db.relationship('Categorie', backref='challenges')
     description_challenge = db.Column(db.Text, nullable=False)
     indice = db.Column(db.String(255))
     flag = db.Column(db.String(100), nullable=False)
     lien_ctfd = db.Column(db.String(100), nullable=False)
     value = db.Column(db.Integer, nullable=False)
-    cours = db.relationship('Cours', secondary=challenges_cours, backref=db.backref('challenges', lazy=True))
+    cours_id = db.Column(db.Integer, db.ForeignKey('cours.uid_cours'))
+    cours = db.relationship('Cours', backref=db.backref('challenges', lazy=True))
+
 
 def admin_required(f):
     @wraps(f)
@@ -433,7 +436,7 @@ def afficher_cours():
     cours_list = Cours.query.all()  # Récupère tous les cours
     cours_par_categorie = defaultdict(list)
     for cours in cours_list:
-        cours_par_categorie[cours.categorie_cours].append(cours)
+        cours_par_categorie[cours.categorie.nom].append(cours)
     return render_template('cours.html', cours_par_categorie=cours_par_categorie)
 
 @app.route('/telecharger/<path:filename>')
@@ -448,58 +451,41 @@ def telecharger_fichier(filename):
 @admin_required
 def creer_cours():
     form = FormulaireCours()
+    if request.method == 'POST' and form.validate_on_submit():
+        nouvelle_cat = form.nouvelle_categorie.data.strip()
+        categorie_obj = None
 
-    if request.method == 'POST':
-        if form.validate_on_submit():
-            nouvelle_cat = form.nouvelle_categorie.data.strip()
-            categorie_selectionnee = None
+        if form.categorie_cours.data:
+            categorie_obj = form.categorie_cours.data
+        elif nouvelle_cat:
+            categorie_existe = Categorie.query.filter_by(nom=nouvelle_cat).first()
+            if not categorie_existe:
+                nouvelle_categorie = Categorie(nom=nouvelle_cat)
+                db.session.add(nouvelle_categorie)
+                db.session.commit()
+                categorie_obj = nouvelle_categorie
+                flash(f'La catégorie "{nouvelle_cat}" a été ajoutée avec succès.', 'success')
+            else:
+                categorie_obj = categorie_existe
 
-            if form.categorie_cours.data:
-                # Si une catégorie existante est sélectionnée
-                categorie_selectionnee = form.categorie_cours.data.nom.lower().strip()
+        fichier = form.fichier.data
+        chemin_fichier = None
+        if fichier:
+            nom_fichier = secure_filename(fichier.filename)
+            chemin_fichier = os.path.join(current_app.config['UPLOAD_FOLDER'], nom_fichier)
+            fichier.save(chemin_fichier)
 
-            if nouvelle_cat:
-                # Si une nouvelle catégorie est entrée
-                nouvelle_cat = nouvelle_cat.lower().strip()
-                # Vérifier si la nouvelle catégorie existe déjà
-                categorie_existe = Categorie.query.filter_by(nom=nouvelle_cat).first()
-                if categorie_existe:
-                    # Si la nouvelle catégorie existe déjà, utiliser la catégorie existante
-                    categorie_selectionnee = nouvelle_cat
-                else:
-                    # Si la nouvelle catégorie n'existe pas, l'ajouter à la base de données
-                    nouvelle_categorie = Categorie(nom=nouvelle_cat)
-                    db.session.add(nouvelle_categorie)
-                    db.session.commit()
-                    flash(f'La catégorie "{nouvelle_cat.capitalize()}" a été ajoutée avec succès.', 'success')
-                    categorie_selectionnee = nouvelle_cat
-
-            # Télécharger le fichier s'il est présent dans la requête
-            fichier = None
-            if 'fichier' in request.files:
-                fichier = request.files['fichier']
-                if fichier.filename != '':
-                    # Spécifiez le répertoire où vous souhaitez enregistrer les fichiers téléchargés
-                    dossier_uploads = 'D:/Windows/Data/INSA/5A/PLP/Site/static/cours'
-                    # Assurez-vous que le répertoire existe, sinon créez-le
-                    if not os.path.exists(dossier_uploads):
-                        os.makedirs(dossier_uploads)
-                    # Enregistrez le fichier dans le répertoire spécifié
-                    chemin_fichier = os.path.join(dossier_uploads, fichier.filename)
-                    fichier.save(chemin_fichier)
-
-            # Créer le nouveau cours avec toutes les données du formulaire
-            nouveau_cours = Cours(
-                titre_cours=form.titre_cours.data,
-                categorie_cours=categorie_selectionnee,
-                description_cours=form.description_cours.data,
-                fichier=fichier.filename if fichier else None,  # Enregistrer le nom du fichier dans la base de données
-                lien=form.lien.data
-            )
-            db.session.add(nouveau_cours)
-            db.session.commit()
-            flash('Le cours a été créé avec succès.', 'success')
-            return redirect(url_for('afficher_cours'))
+        nouveau_cours = Cours(
+            titre_cours=form.titre_cours.data,
+            categorie=categorie_obj,
+            description_cours=form.description_cours.data,
+            lien=form.lien.data,
+            fichier=nom_fichier if fichier else None
+        )
+        db.session.add(nouveau_cours)
+        db.session.commit()
+        flash('Le cours a été créé avec succès.', 'success')
+        return redirect(url_for('afficher_cours'))
 
     return render_template('creer_cours.html', form=form, est_modification=False)
 
@@ -510,13 +496,42 @@ def modifier_cours(uid_cours):
     form = FormulaireCours(obj=cours)
     if form.validate_on_submit():
         cours.titre_cours = form.titre_cours.data
-        cours.categorie_cours = form.categorie_cours.data
         cours.description_cours = form.description_cours.data
         cours.lien = form.lien.data
+
+        # Si une nouvelle catégorie est sélectionnée
+        nouvelle_categorie_nom = form.nouvelle_categorie.data.strip().lower()
+        if nouvelle_categorie_nom:
+            # Vérifie si la nouvelle catégorie existe déjà
+            categorie_existe = Categorie.query.filter_by(nom=nouvelle_categorie_nom).first()
+            if categorie_existe:
+                # Utilise la catégorie existante
+                cours.categorie = categorie_existe
+            else:
+                # Sinon, ajoute la nouvelle catégorie à la base de données
+                nouvelle_categorie = Categorie(nom=nouvelle_categorie_nom)
+                db.session.add(nouvelle_categorie)
+                db.session.commit()
+                flash(f'La catégorie "{nouvelle_categorie.nom.capitalize()}" a été ajoutée avec succès.', 'success')
+                cours.categorie = nouvelle_categorie
+        else:
+            # Si aucune nouvelle catégorie n'est sélectionnée, utilise la catégorie existante
+            cours.categorie = form.categorie_cours.data
+
         db.session.commit()
         flash('Le cours a été mis à jour avec succès.', 'success')
         return redirect(url_for('detail_cours', uid_cours=uid_cours))
+
+    if request.method == 'GET':
+        # Pré-remplir le formulaire avec les données du cours existant
+        form.titre_cours.data = cours.titre_cours
+        form.description_cours.data = cours.description_cours
+        form.lien.data = cours.lien
+        if cours.categorie:
+            form.categorie_cours.data = cours.categorie
+
     return render_template('creer_cours.html', form=form, cours=cours, est_modification=True)
+
 
 @app.route('/cours/supprimer/<int:uid_cours>', methods=['POST'])
 @admin_required
@@ -559,55 +574,72 @@ def ne_plus_suivre_cours(uid_cours):
 @app.route('/challenges')
 @login_required
 def afficher_challenges():
-    challenges_list = Challenge.query.all()
+    challenges_list = Challenge.query.all()  # Récupère tous les challenges
     return render_template('challenges.html', challenges_list=challenges_list)
 
-@app.route('/challenges/ajouter-challenge', methods=['GET', 'POST'])
-@admin_required
+from flask import request
+
+@app.route('/ajouter_challenge', methods=['GET', 'POST'])
 def ajouter_challenge():
     form = FormulaireChallenge()
-    form.cours_associe.choices = [(c.uid_cours, c.titre_cours) for c in Cours.query.order_by(Cours.titre_cours).all()]
-
     if form.validate_on_submit():
+        titre_challenge = form.titre_challenge.data
+        description_challenge = form.description_challenge.data
+        indice = form.indice.data
+        value = form.value.data
+        lien_ctfd = form.lien_ctfd.data
+        flag = form.flag.data
+        cours_associe = form.cours_associe.data
+
+        # Utilisez la catégorie du cours associé pour créer le challenge
+        categorie_challenge = cours_associe.categorie
+
+        # Créez une nouvelle instance de Challenge avec les données fournies
         nouveau_challenge = Challenge(
-            titre_challenge=form.titre_challenge.data,
-            categorie_challenge=form.categorie_challenge.data,
-            description_challenge=form.description_challenge.data,
-            indice=form.indice.data,
-            value=form.value.data,
-            lien_ctfd=form.lien_ctfd.data,
-            flag=form.flag.data,
+            titre_challenge=titre_challenge,
+            description_challenge=description_challenge,
+            categorie=categorie_challenge,
+            indice=indice,
+            value=value,
+            lien_ctfd=lien_ctfd,
+            flag=flag,
+            cours=cours_associe
         )
 
-        # Associer le cours sélectionné avec le challenge
-        cours = Cours.query.get(form.cours_associe.data)
-        if cours:
-            nouveau_challenge.cours.append(cours)
-
+        # Ajoutez le nouveau challenge à la base de données
         db.session.add(nouveau_challenge)
         db.session.commit()
+
+        # Redirigez l'utilisateur vers une autre page après l'ajout du challenge
         flash('Le challenge a été ajouté avec succès.', 'success')
         return redirect(url_for('afficher_challenges'))
 
     return render_template('ajouter_challenge.html', form=form)
+
 
 @app.route('/challenges/modifier/<int:uid_challenge>', methods=['GET', 'POST'])
 @admin_required
 def modifier_challenge(uid_challenge):
     challenge = Challenge.query.get_or_404(uid_challenge)
     form = FormulaireChallenge(obj=challenge)
+    form.cours_associe.choices = [(c.uid_cours, c.titre_cours) for c in Cours.query.order_by(Cours.titre_cours).all()]
     if form.validate_on_submit():
         challenge.titre_challenge = form.titre_challenge.data
-        challenge.categorie_challenge=form.categorie_challenge.data
-        challenge.description_challenge=form.description_challenge.data
-        challenge.indice=form.indice.data
-        challenge.value=form.value.data
-        challenge.lien_ctfd=form.lien_ctfd.data
-        challenge.flag=form.flag.data
+        challenge.description_challenge = form.description_challenge.data
+        challenge.indice = form.indice.data
+        challenge.value = form.value.data
+        challenge.lien_ctfd = form.lien_ctfd.data
+        challenge.flag = form.flag.data
+        challenge.cours = form.cours_associe.data  # Met à jour avec l'objet Cours directement
         db.session.commit()
         flash('Le challenge a été mis à jour avec succès.', 'success')
         return redirect(url_for('detail_challenge', uid_challenge=uid_challenge))
+    if request.method == 'GET':
+        form.cours_associe.data = challenge.cours  # Assurez-vous de pré-sélectionner l'objet Cours
     return render_template('ajouter_challenge.html', form=form, challenge=challenge, est_modification=True)
+
+
+
 
 @app.route('/challenges/supprimer/<int:uid_challenge>', methods=['POST'])
 @admin_required
@@ -649,8 +681,17 @@ def page_utilisateur():
     utilisateurs = Utilisateur.query.all()
     return render_template('utilisateurs.html', utilisateurs=utilisateurs)
 
+@app.route('/utilisateur/supprimer/<int:uid_utilisateur>', methods=['POST'])
+@admin_required
+def supprimer_utilisateur(uid_utilisateur):
+    utilisateur = Utilisateur.query.get_or_404(uid_utilisateur)
+    db.session.delete(utilisateur)
+    db.session.commit()
+    flash('L\'utilisateur a été supprimé avec succès.', 'success')
+    return redirect(url_for('page_utilisateur'))
+
 @app.route('/dashboard', methods=['GET'])
-@login_required
+@admin_required
 def dashboard():
     utilisateurs = Utilisateur.query.all()  # Récupérer tous les utilisateurs pour la liste déroulante
     utilisateur_id = request.args.get('utilisateur_id', type=int)  # Gardez l'ID en tant qu'entier si votre DB le stocke ainsi
@@ -661,18 +702,20 @@ def dashboard():
     if utilisateur_id:
         # Points obtenus par l'utilisateur dans chaque catégorie
         points_obtenus = db.session.query(
-            Challenge.categorie_challenge,
+            Categorie.nom,
             func.sum(Challenge.value).label('points_obtenus')
-        ).join(utilisateur_challenge, Challenge.uid_challenge == utilisateur_challenge.c.challenge_uid) \
+        ).join(Challenge, Categorie.id == Challenge.categorie_id) \
+         .join(utilisateur_challenge, Challenge.uid_challenge == utilisateur_challenge.c.challenge_uid) \
          .filter(utilisateur_challenge.c.utilisateur_uid == utilisateur_id) \
-         .group_by(Challenge.categorie_challenge) \
+         .group_by(Categorie.nom) \
          .all()
 
         # Total des points possibles dans chaque catégorie
         total_points = db.session.query(
-            Challenge.categorie_challenge,
+            Categorie.nom,
             func.sum(Challenge.value).label('total_points')
-        ).group_by(Challenge.categorie_challenge) \
+        ).join(Challenge, Categorie.id == Challenge.categorie_id) \
+         .group_by(Categorie.nom) \
          .all()
 
         # Convertir total_points en dictionnaire
@@ -695,13 +738,88 @@ def dashboard():
 
     return render_template('dashboard.html', utilisateurs=utilisateurs, data_for_chart=data_for_chart, completion_rate_for_chart=completion_rate_for_chart, utilisateur_id=utilisateur_id)
 
-
 @app.route('/deconnexion')
 @login_required
 def deconnexion():
     session.clear()
     flash('Vous avez été déconnecté.', 'info')
     return redirect(url_for('connexion'))
+
+
+## Certificats
+
+DOSSIER_CERTIFICATS = "C:/Users/mathi/Desktop/"
+
+@app.route('/generer_certificat/<int:utilisateur_id>', methods=['GET'])
+def generer_certificat(utilisateur_id):
+    # Récupérer l'utilisateur à partir de son ID dans la base de données
+    utilisateur = Utilisateur.query.get(utilisateur_id)
+
+    if utilisateur:
+        # Récupérer les informations de l'utilisateur
+        nom_utilisateur = utilisateur.nom
+        prenom_utilisateur = utilisateur.prenom
+        points_obtenus = utilisateur.score
+
+        # Créer un nouveau document PDF
+        pdf_path = os.path.join(DOSSIER_CERTIFICATS, "certificat.pdf")
+        document = SimpleDocTemplate(pdf_path, pagesize=letter)
+
+        # Définir le style du texte
+        styles = getSampleStyleSheet()
+        style_title = styles["Title"]
+        style_body = styles["BodyText"]
+
+        # Ajouter les éléments au PDF
+        elements = []
+
+        # Ajouter le titre
+        elements.append(Paragraph("Certificat de Réussite", style_title))
+        elements.append(Spacer(1, 12))
+
+        # Ajouter le texte avec les informations de l'utilisateur
+        text = f"Délivré à : {prenom_utilisateur} {nom_utilisateur}<br/>"
+        text += f"Nombre de Points : {points_obtenus}<br/>"
+        text += "Félicitations pour votre réussite !"
+        elements.append(Paragraph(text, style_body))
+
+        # Ajouter les logos
+        logo_ecole_path = "D:/Windows/Data/INSA/5A/PLP/Site/static/images/Logo_INSA.png"
+        logo_groupe_path = "D:/Windows/Data/INSA/5A/PLP/Site/static/images/Logo_PLP.png"
+        if os.path.exists(logo_ecole_path):
+            logo_ecole = Image(logo_ecole_path, width=2*inch, height=1*inch)
+            elements.append(logo_ecole)
+        if os.path.exists(logo_groupe_path):
+            logo_groupe = Image(logo_groupe_path, width=2*inch, height=1*inch)
+            elements.append(logo_groupe)
+
+        # Générer le PDF
+        document.build(elements)
+
+        # Retourner le nom du fichier PDF généré
+        return "certificat.pdf"
+    else:
+        # Gérer le cas où l'utilisateur n'est pas trouvé dans la base de données
+        print("Utilisateur non trouvé.")
+
+@app.route('/telecharger_certificat/<int:utilisateur_id>')
+def telecharger_certificat(utilisateur_id):
+    # Générer le certificat avec les données de l'utilisateur
+    nom_fichier_pdf = generer_certificat(utilisateur_id)
+
+    if nom_fichier_pdf:
+        # Définir le chemin complet du fichier PDF généré
+        chemin_fichier_pdf = os.path.join(DOSSIER_CERTIFICATS, nom_fichier_pdf)
+
+        if os.path.exists(chemin_fichier_pdf):
+            # Envoyer le fichier PDF généré en tant que téléchargement
+            return send_file(chemin_fichier_pdf, as_attachment=True)
+        else:
+            # Gérer le cas où le fichier PDF n'existe pas
+            return "Le fichier PDF généré n'existe pas."
+    else:
+        # Gérer le cas où le fichier PDF n'a pas été généré
+        return "Erreur lors de la génération du certificat"
 
 
 ## Main

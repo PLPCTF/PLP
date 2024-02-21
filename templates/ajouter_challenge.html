@@ -8,7 +8,8 @@
 <div class="container mt-4">
     <h1>{% if est_modification %}Modifier le challenge{% else %}Ajouter un nouveau challenge{% endif %}</h1>
 
-    <form method="post" action="{% if est_modification %}{{ url_for('modifier_challenge', uid_challenge=challenge.uid_challenge) }}{% else %}{{ url_for('ajouter_challenge') }}{% endif %}" class="mt-4">
+    <form method="post" action="{% if est_modification %}{{ url_for('modifier_challenge', uid_challenge=challenge.uid_challenge if challenge else 0) }}{% else %}{{ url_for('ajouter_challenge') }}{% endif %}" class="mt-4">
+
         {{ form.hidden_tag() }}
         
         <div class="mb-3">
@@ -20,9 +21,9 @@
         </div>
 
         <div class="mb-3">
-            {{ form.categorie_challenge.label(class="form-label") }}
-            {{ form.categorie_challenge(class="form-control" + (" is-invalid" if form.categorie_challenge.errors else "")) }}
-            {% for error in form.categorie_challenge.errors %}
+            {{ form.cours_associe.label(class="form-label") }}
+            {{ form.cours_associe(class="form-select" + (" is-invalid" if form.cours_associe.errors else "")) }}
+            {% for error in form.cours_associe.errors %}
                 <div class="invalid-feedback">{{ error }}</div>
             {% endfor %}
         </div>
@@ -34,26 +35,6 @@
                 <div class="invalid-feedback">{{ error }}</div>
             {% endfor %}
         </div>
-
-        <!--<div class="mb-3">
-            <label for="uid_cours" class="form-control-label">Sélectionner un cours</label>
-            <select id="uid_cours" name="uid_cours" class="form-control">
-                {% for cours in cours_list %}
-                    <option value="{{ cours.uid_cours }}">{{ cours.titre_cours }}</option>
-                {% endfor %}
-            </select>
-        </div> -->
-
-        <div class="mb-3">
-            {{ form.cours_associe.label(class="form-label") }}
-            {{ form.cours_associe(class="form-select") }}
-            {% if form.cours_associe.errors %}
-                {% for error in form.cours_associe.errors %}
-                    <div class="invalid-feedback">{{ error }}</div>
-                {% endfor %}
-            {% endif %}
-        </div>
-        
 
         <div class="mb-3">
             {{ form.indice.label(class="form-label") }}
@@ -89,9 +70,9 @@
 
         <button type="submit" class="btn btn-primary">{{ "Modifier" if est_modification else "Créer" }}</button>
         {% if est_modification %}
-            <a href="{{ url_for('detail_challenge', uid_challenge=challenge.uid_challenge) }}" class="btn btn-secondary">Annuler</a>
+        <a href="{{ url_for('detail_challenge', uid_challenge=challenge.uid_challenge) }}" class="btn btn-secondary">Annuler</a>
         {% else %}
-            <a href="{{ url_for('afficher_challenges') }}" class="btn btn-secondary">Annuler</a>
+        <a href="{{ url_for('afficher_challenges') }}" class="btn btn-secondary">Annuler</a>
         {% endif %}
     </form>
 </div>

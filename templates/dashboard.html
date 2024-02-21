@@ -19,7 +19,7 @@
                     <select class="form-select" name="utilisateur_id" onchange="this.form.submit()">
                         <option value="">Sélectionnez un utilisateur</option>
                         {% for utilisateur in utilisateurs %}
-                        <option value="{{ utilisateur.uid_utilisateur }}" {% if utilisateur.uid_utilisateur|string == utilisateur_id %}selected{% endif %}>
+                        <option value="{{ utilisateur.uid_utilisateur }}" {% if utilisateur.uid_utilisateur == utilisateur_id %}selected{% endif %}>
                             {{ utilisateur.nom_utilisateur }}
                         </option>
                         {% endfor %}
@@ -58,7 +58,9 @@
             </div>
         </div>
     {% endif %}
-
+    <form action="/generer_certificat/{{ utilisateur_id }}" method="GET">
+        <button type="submit">Générer certificat</button>
+    </form>
 </div>
 
 <script>

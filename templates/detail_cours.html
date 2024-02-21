@@ -19,20 +19,19 @@
         </form>
     {% endif %}
 
-    <span class="text-muted">{{ cours.categorie_cours }}</span>
+    <span class="text-muted">{{ cours.categorie.nom }}</span>
 </div>
 
 <div class="container">
     <p>{{ cours.description_cours | safe }}</p>
 
-    
     {% if cours.lien %}
         <p>Lien  : <a href="{{ cours.lien }}">{{ cours.lien }}</a></p>
     {% endif %}
     
     {% if cours.fichier %}
-    <a href="{{ url_for('telecharger_fichier', filename=cours.fichier) }}" class="btn btn-primary" download>Télécharger le fichier</a>
-{% endif %}
+        <a href="{{ url_for('telecharger_fichier', filename=cours.fichier) }}" class="btn btn-primary" download>Télécharger le fichier</a>
+    {% endif %}
 </div>
 
 {% if current_user.is_authenticated and current_user.role == 2 %}
