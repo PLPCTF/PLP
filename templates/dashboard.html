@@ -58,7 +58,9 @@
             </div>
         </div>
     {% endif %}
-
+    <form action="/generer_certificat/{{ utilisateur_id }}" method="GET">
+        <button type="submit">Générer certificat</button>
+    </form>
 </div>
 
 <script>

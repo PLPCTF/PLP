@@ -20,7 +20,13 @@ from functools import wraps
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from sqlalchemy.sql import func
 from collections import defaultdict
-
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 ## Configuration
 
@@ -696,6 +702,86 @@ def dashboard():
     return render_template('dashboard.html', utilisateurs=utilisateurs, data_for_chart=data_for_chart, completion_rate_for_chart=completion_rate_for_chart, utilisateur_id=utilisateur_id)
 
 
+
+
+
+
+DOSSIER_CERTIFICATS = "C:/Users/alexa/OneDrive/Documents/plp/test_certif"
+
+@app.route('/generer_certificat/<int:utilisateur_id>', methods=['GET'])
+def generer_certificat(utilisateur_id):
+    # Récupérer l'utilisateur à partir de son ID dans la base de données
+    utilisateur = Utilisateur.query.get(utilisateur_id)
+    
+    if utilisateur:
+        # Récupérer les informations de l'utilisateur
+        nom_utilisateur = utilisateur.nom
+        prenom_utilisateur = utilisateur.prenom
+        points_obtenus = utilisateur.score
+        
+        # Créer un nouveau document PDF
+        pdf_path = os.path.join(DOSSIER_CERTIFICATS, "certificat.pdf")
+        document = SimpleDocTemplate(pdf_path, pagesize=letter)
+        
+        # Définir le style du texte
+        styles = getSampleStyleSheet()
+        style_title = styles["Title"]
+        style_body = styles["BodyText"]
+        
+        # Ajouter les éléments au PDF
+        elements = []
+        
+        # Ajouter le titre
+        elements.append(Paragraph("Certificat de Réussite", style_title))
+        elements.append(Spacer(1, 12))
+        
+        # Ajouter le texte avec les informations de l'utilisateur
+        text = f"Délivré à : {prenom_utilisateur} {nom_utilisateur}<br/>"
+        text += f"Nombre de Points : {points_obtenus}<br/>"
+        text += "Félicitations pour votre réussite !"
+        elements.append(Paragraph(text, style_body))
+        
+        # Ajouter les logos
+        logo_ecole_path = "C:/Users/alexa/OneDrive/Documents/plp/Logo_INSA.png"
+        logo_groupe_path = "C:/Users/alexa/OneDrive/Documents/plp/Logo_PLP.png"
+        if os.path.exists(logo_ecole_path):
+            logo_ecole = Image(logo_ecole_path, width=2*inch, height=1*inch)
+            elements.append(logo_ecole)
+        if os.path.exists(logo_groupe_path):
+            logo_groupe = Image(logo_groupe_path, width=2*inch, height=1*inch)
+            elements.append(logo_groupe)
+        
+        # Générer le PDF
+        document.build(elements)
+        
+        # Retourner le nom du fichier PDF généré
+        return "certificat.pdf"
+    else:
+        # Gérer le cas où l'utilisateur n'est pas trouvé dans la base de données
+        print("Utilisateur non trouvé.")
+
+@app.route('/telecharger_certificat/<int:utilisateur_id>')
+def telecharger_certificat(utilisateur_id):
+    # Générer le certificat avec les données de l'utilisateur
+    nom_fichier_pdf = generer_certificat(utilisateur_id)
+    
+    if nom_fichier_pdf:
+        # Définir le chemin complet du fichier PDF généré
+        chemin_fichier_pdf = os.path.join(DOSSIER_CERTIFICATS, nom_fichier_pdf)
+        
+        if os.path.exists(chemin_fichier_pdf):
+            # Envoyer le fichier PDF généré en tant que téléchargement
+            return send_file(chemin_fichier_pdf, as_attachment=True)
+        else:
+            # Gérer le cas où le fichier PDF n'existe pas
+            return "Le fichier PDF généré n'existe pas."
+    else:
+        # Gérer le cas où le fichier PDF n'a pas été généré
+        return "Erreur lors de la génération du certificat"
+    
+    
+    
+    
 @app.route('/deconnexion')
 @login_required
 def deconnexion():
