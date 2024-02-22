@@ -8,57 +8,50 @@
     <h1>Demandes d'inscription en attente</h1>
 </div>
 
-    <table class="table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Email</th>
-                <th>Classe</th>
-                <th>Nom</th>
-                <th>Prénom</th>
-                <th>Nom d'utilisateur</th>
-                <th>Rôle</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% if demandes %}
-                {% for demande in demandes %}
-                    <tr>
-                        <td>{{ demande.id }}</td>
-                        <td>{{ demande.email }}</td>
-                        <td>{{ demande.classe }}</td>
-                        <td>{{ demande.nom }}</td>
-                        <td>{{ demande.prenom }}</td>
-                        <td>{{ demande.nom_utilisateur }}</td>
-                        <td>
-                            <form method="POST" action="{{ url_for('valider_demande_inscription', demande_id=demande.id) }}">
-                                <select name="role_demande" class="form-control">
-                                    <option value="1">Utilisateur</option>
-                                    <option value="2">Administrateur</option>
-                                </select>
-                                <button type="submit" class="btn btn-success">Valider</button>
-                            </form>
-                            <form method="POST" action="{{ url_for('rejeter_demande_inscription', demande_id=demande.id) }}">
-                                <button type="submit" class="btn btn-danger">Rejeter</button>
-                            </form>
-                        </td>
-                    </tr>
-                {% endfor %}
-            {% else %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Email</th>
+            <th>Classe</th>
+            <th>Nom</th>
+            <th>Prénom</th>
+            <th>Nom d'utilisateur</th>
+            <th>Rôle</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if demandes %}
+            {% for demande in demandes %}
                 <tr>
-                    <td colspan="8">Aucune demande d'inscription en attente</td>
+                    <td>{{ demande.id }}</td>
+                    <td>{{ demande.email }}</td>
+                    <td>{{ demande.classe }}</td>
+                    <td>{{ demande.nom }}</td>
+                    <td>{{ demande.prenom }}</td>
+                    <td>{{ demande.nom_utilisateur }}</td>
+                    <td>{{ demande.role }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('valider_demande_inscription', demande_id=demande.id) }}">
+                            <select name="role_demande" class="form-control">
+                                <option value="1">Utilisateur</option>
+                                <option value="2">Administrateur</option>
+                            </select>
+                            <button type="submit" class="btn btn-success">Valider</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('rejeter_demande_inscription', demande_id=demande.id) }}" style="margin-top: 10px;">
+                            <button type="submit" class="btn btn-danger">Rejeter</button>
+                        </form>
+                    </td>
                 </tr>
-            {% endif %}
-        </tbody>
-    </table>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-{% if messages %}
-    {% for category, message in messages %}
-    <div class="alert alert-{{ category }}">{{ message }}</div>
-    {% endfor %}
-{% endif %}
-{% endwith %}
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="8">Aucune demande d'inscription en attente</td>
+            </tr>
+        {% endif %}
+    </tbody>
+</table>
 
 {% endblock %}

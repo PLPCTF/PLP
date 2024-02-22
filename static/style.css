@@ -1,0 +1,207 @@
+/* Nouvelles modifications et ajouts */
+
+/* Style pour le corps de la page */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Changement de la police pour une meilleure lisibilité */
+}
+
+/* Style pour les titres */
+h1, h2, h3, h4, h5, h6 {
+    color: #333;
+    font-family: 'Arial', sans-serif; /* Utilisation d'une police sans-serif pour les titres */
+    font-weight: bold; /* Ajout d'un style en gras */
+}
+
+/* Style pour les liens */
+a {
+    color: #F8BDCB;
+    text-decoration: none; /* Suppression du soulignement par défaut des liens */
+}
+
+a:hover {
+    color: #F5A9BC;
+}
+
+/* Style pour les boutons */
+.btn {
+    border: none;
+    border-radius: 25px; /* Arrondissement des coins */
+    padding: 10px 20px; /* Augmentation de l'espacement interne */
+    font-size: 16px;
+    transition: background-color 0.3s ease, color 0.3s ease; /* Animation douce au survol */
+}
+
+.btn:hover {
+    cursor: pointer; /* Changement du curseur au survol */
+}
+
+.btn-primary {
+    background-color: #F8BDCB;
+    color: #fff;
+}
+
+/* Style pour le bouton "Nom" en rouge */
+.btn-nom {
+    
+    color: #fff;
+}
+
+/* Style pour le bouton "Score" */
+.btn-score {
+    background-color: #838383; /* Couleur bleue */
+    color: #fff;
+}
+
+/* Style pour les formulaires */
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-control-label {
+    font-weight: bold;
+    color: #333;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ced4da;
+    border-radius: 25px; /* Arrondissement des coins */
+    transition: border-color 0.3s ease; /* Animation douce lors du focus */
+}
+
+.form-control:focus {
+    border-color: #F8BDCB; /* Changement de couleur au focus */
+    outline: none; /* Suppression de la bordure bleue par défaut */
+}
+
+/* Style pour les messages d'erreur */
+.text-danger {
+    color: #dc3545;
+}
+
+/* Style pour la navbar */
+.navbar {
+    background-color: #F8BDCB; /* Couleur rose */
+    border-radius: 0; /* Suppression de la bordure arrondie */
+}
+
+.navbar-brand {
+    color: #fff;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.navbar-brand:hover {
+    color: #fff;
+}
+
+.navbar-nav .nav-link {
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.navbar-nav .nav-link:hover {
+    color: #fff;
+}
+
+/* Style pour l'onglet actif */
+.nav-item.active .nav-link {
+    font-weight: bold; /* Police en gras */
+    font-size: 16px; /* Taille de police réduite */
+}
+
+/* Style pour les cartes */
+.card {
+    border: none; /* Suppression de la bordure */
+    border-radius: 15px; /* Arrondissement des coins */
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); /* Légère ombre pour effet de profondeur */
+}
+
+.card-title {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.card-text {
+    color: #666;
+}
+
+.text-muted {
+    color: #999;
+}
+
+/* Style pour l'élément contenant le contenu */
+.content-container {
+    padding-bottom: 50px; /* Ajoute un espace de 50 pixels en bas de l'élément */
+}
+
+/* Ajout d'un espace entre le score, le nom d'utilisateur et le bouton de déconnexion */
+.navbar-text {
+    margin-right: 10px;
+}
+
+
+.list-group-item {
+    font-size: 14px; /* Réduire la taille de la police */
+}
+
+.list-group-item span:first-child {
+    flex-grow: 1;
+    margin-right: 2px; /* Réduire l'espace entre le nom d'utilisateur et le score */
+    margin-left: 960px; /* Réduire l'espace entre le nom d'utilisateur et le score */
+}
+
+.custom-badge {
+    font-size: 12px; /* Réduire la taille de la police du badge */
+    padding: 3px 5px; /* Réduire le rembourrage du badge */
+}
+
+/* Style de base pour le select */
+.form-select {
+    display: inline-block;
+    padding: 8px 30px 8px 10px; /* Augmentation de l'espace à droite pour la flèche */
+    font-size: 16px;
+    font-family: Arial, sans-serif;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #fff;
+    color: #333;
+    position: relative; /* Positionnement relatif pour la flèche */
+  }
+  
+  /* Style au survol */
+  .form-select:hover {
+    border-color: #999;
+  }
+  
+  /* Style lorsque le select est focus */
+  .form-select:focus {
+    outline: none;
+    border-color: #66afe9;
+    box-shadow: 0 0 5px rgba(102, 175, 233, 0.6);
+  }
+  
+  /* Style lorsque le select est désactivé */
+  .form-select:disabled {
+    background-color: #f0f0f0;
+    color: #999;
+    cursor: not-allowed;
+  }
+  
+  /* Style pour le dropdown arrow */
+  .form-select::after {
+    content: "\25BC"; /* flèche vers le bas */
+    position: absolute;
+    top: 50%;
+    right: 15px; /* Déplacée légèrement vers la gauche */
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  
+  /* Style pour les options */
+  .form-select option {
+    background-color: #fff;
+    color: #333;
+  }

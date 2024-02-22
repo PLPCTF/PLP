@@ -25,6 +25,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 import hashlib
+from werkzeug.utils import secure_filename
 
 
 ## Configuration
@@ -34,6 +35,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'votre_clé_secrète'
 
+app.config['UPLOAD_FOLDER'] = 'D:/Windows/Data/INSA/5A/PLP/Site/static/cours/'
 
 app.config['MAIL_SERVER'] = 'smtp.example.com'  # Utilisez votre serveur SMTP
 app.config['MAIL_PORT'] = 587  # Utilisez le port approprié pour votre serveur SMTP
@@ -473,7 +475,7 @@ def creer_cours():
         chemin_fichier = None
         if fichier:
             nom_fichier = secure_filename(fichier.filename)
-            chemin_fichier = os.path.join(current_app.config['UPLOAD_FOLDER'], nom_fichier)
+            chemin_fichier = os.path.join(app.config['UPLOAD_FOLDER'], nom_fichier)
             fichier.save(chemin_fichier)
 
         nouveau_cours = Cours(
@@ -519,6 +521,16 @@ def modifier_cours(uid_cours):
             # Si aucune nouvelle catégorie n'est sélectionnée, utilise la catégorie existante
             cours.categorie = form.categorie_cours.data
 
+        # Gestion de l'upload d'un fichier
+        fichier = request.files['fichier']
+        if fichier and fichier.filename:
+            nom_fichier_securise = secure_filename(fichier.filename)
+            chemin_sauvegarde = os.path.join(app.config['UPLOAD_FOLDER'], nom_fichier_securise)
+            fichier.save(chemin_sauvegarde)
+
+            # Mettez à jour le chemin du fichier ou l'identifiant dans votre modèle de cours
+            cours.fichier = nom_fichier_securise  # Assurez-vous d'ajouter un attribut à votre modèle pour stocker ce chemin
+
         db.session.commit()
         flash('Le cours a été mis à jour avec succès.', 'success')
         return redirect(url_for('detail_cours', uid_cours=uid_cours))
@@ -528,6 +540,7 @@ def modifier_cours(uid_cours):
         form.titre_cours.data = cours.titre_cours
         form.description_cours.data = cours.description_cours
         form.lien.data = cours.lien
+        form.fichier.data = cours.fichier
         if cours.categorie:
             form.categorie_cours.data = cours.categorie
 
@@ -643,9 +656,6 @@ def modifier_challenge(uid_challenge):
     if request.method == 'GET':
         form.cours_associe.data = challenge.cours  # Assurez-vous de pré-sélectionner l'objet Cours
     return render_template('ajouter_challenge.html', form=form, challenge=challenge, est_modification=True)
-
-
-
 
 @app.route('/challenges/supprimer/<int:uid_challenge>', methods=['POST'])
 @admin_required
