@@ -138,18 +138,48 @@
                 {% endfor %}
             </div>
             <div id="challenges" class="container tab-pane">
+                <div class="row mt-4"> <!-- Ajuster la marge supérieure des cartes de challenges -->
                 {% for challenge in current_user.challenges_valides %}
-                <div class="col-md-4 mb-3">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ challenge.titre_challenge }}</h5>
-                            <p class="card-text">{{ challenge.description_challenge | truncate(150) }}</p>
-                            <span class="badge bg-success">{{ challenge.value }} points</span>
-                            <a href="{{ url_for('detail_challenge', uid_challenge=challenge.uid_challenge) }}" class="btn btn-primary">Voir le challenge</a>
+                    <div class="col-md-4 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center"> <!-- Ajout de la classe pour aligner vers la droite et au centre verticalement -->
+                                    <h5 class="card-title">{{ challenge.titre_challenge }}</h5>
+                                    <span class="badge rounded-pill mb-2"
+                                    {% if challenge.value <= 10 %}
+                                        style="background-color: #6699CC; color: #fff;"
+                                    {% elif challenge.value <= 20 %}
+                                        style="background-color: #7FB3D5; color: #fff;"
+                                    {% elif challenge.value <= 30 %}
+                                        style="background-color: #66CCCC; color: #fff;"
+                                    {% elif challenge.value <= 40 %}
+                                        style="background-color: #66CC99; color: #fff;"
+                                    {% elif challenge.value <= 50 %}
+                                        style="background-color: #CCCC66; color: #fff;"
+                                    {% elif challenge.value <= 60 %}
+                                        style="background-color: #CC9966; color: #fff;"
+                                    {% elif challenge.value <= 70 %}
+                                        style="background-color: #CC6699; color: #fff;"
+                                    {% elif challenge.value <= 80 %}
+                                        style="background-color: #cc66ccba; color: #fff;"
+                                    {% elif challenge.value <= 90 %}
+                                        style="background-color: #CC6666; color: #fff;"
+                                    {% else %}
+                                        style="background-color: #000; color: #fff;"
+                                    {% endif %}
+                                    >
+                                        {{ challenge.value }} points
+                                    </span>
+                                </div>
+                                <p class="card-text">{{ challenge.description_challenge | truncate(150) }}</p>
+                                <div class="d-flex justify-content-end"> <!-- Ajout de la classe pour aligner vers la droite -->
+                                    <a href="{{ url_for('detail_challenge', uid_challenge=challenge.uid_challenge) }}" class="btn btn-primary">Voir le challenge</a>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
                 {% endfor %}
+                </div>
             </div>
         </div>
     </div>

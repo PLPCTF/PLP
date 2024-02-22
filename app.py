@@ -24,6 +24,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
+import hashlib
 
 
 ## Configuration
@@ -577,8 +578,6 @@ def afficher_challenges():
     challenges_list = Challenge.query.all()  # Récupère tous les challenges
     return render_template('challenges.html', challenges_list=challenges_list)
 
-from flask import request
-
 @app.route('/ajouter_challenge', methods=['GET', 'POST'])
 def ajouter_challenge():
     form = FormulaireChallenge()
@@ -594,6 +593,9 @@ def ajouter_challenge():
         # Utilisez la catégorie du cours associé pour créer le challenge
         categorie_challenge = cours_associe.categorie
 
+        # Hachez le drapeau du challenge
+        flag_hashed = hashlib.sha256(flag.encode()).hexdigest()
+
         # Créez une nouvelle instance de Challenge avec les données fournies
         nouveau_challenge = Challenge(
             titre_challenge=titre_challenge,
@@ -602,7 +604,7 @@ def ajouter_challenge():
             indice=indice,
             value=value,
             lien_ctfd=lien_ctfd,
-            flag=flag,
+            flag=flag_hashed,
             cours=cours_associe
         )
 
@@ -629,7 +631,11 @@ def modifier_challenge(uid_challenge):
         challenge.indice = form.indice.data
         challenge.value = form.value.data
         challenge.lien_ctfd = form.lien_ctfd.data
-        challenge.flag = form.flag.data
+
+        # Hachez le drapeau du challenge
+        flag_hashed = hashlib.sha256(form.flag.data.encode()).hexdigest()
+        challenge.flag = flag_hashed
+
         challenge.cours = form.cours_associe.data  # Met à jour avec l'objet Cours directement
         db.session.commit()
         flash('Le challenge a été mis à jour avec succès.', 'success')
@@ -662,7 +668,11 @@ def verifier_flag(uid_challenge):
     challenge = Challenge.query.get_or_404(uid_challenge)
     flag_soumis = request.form['flag']
 
-    if flag_soumis == challenge.flag:
+    # Hachez le drapeau soumis par l'utilisateur
+    flag_soumis_hashed = hashlib.sha256(flag_soumis.encode()).hexdigest()
+
+    # Comparez le drapeau haché soumis par l'utilisateur avec le drapeau haché du challenge
+    if flag_soumis_hashed == challenge.flag:
         current_user.score += challenge.value
         current_user.challenges_valides.append(challenge)
         db.session.commit()
@@ -691,11 +701,14 @@ def supprimer_utilisateur(uid_utilisateur):
     return redirect(url_for('page_utilisateur'))
 
 @app.route('/dashboard', methods=['GET'])
-@admin_required
+@login_required
 def dashboard():
-    utilisateurs = Utilisateur.query.all()  # Récupérer tous les utilisateurs pour la liste déroulante
-    utilisateur_id = request.args.get('utilisateur_id', type=int)  # Gardez l'ID en tant qu'entier si votre DB le stocke ainsi
-
+    if current_user.role == 2:
+        utilisateurs = Utilisateur.query.all()  # Récupérer tous les utilisateurs pour la liste déroulante
+        utilisateur_id = request.args.get('utilisateur_id', type=int)  # Gardez l'ID en tant qu'entier si votre DB le stocke ainsi
+    else:
+        utilisateurs = [current_user]
+        utilisateur_id = current_user.uid_utilisateur
     data_for_chart = {}
     completion_rate_for_chart = {}
 

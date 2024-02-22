@@ -11,6 +11,7 @@
 </div>
 
 <div class="container">
+    {% if current_user.is_authenticated and current_user.role == 2 %}
     <!-- Liste déroulante pour choisir un utilisateur -->
     <div class="row mb-4">
         <div class="col-md-6">
@@ -28,6 +29,7 @@
             </form>
         </div>
     </div>
+    {% endif %}
 
     {% if data_for_chart|length > 0 %}
         <div class="row">

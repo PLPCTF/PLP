@@ -11,17 +11,67 @@
 <div class="container">
     <form action="{{ url_for('classement') }}" method="get" class="mb-3 d-flex">
         <input type="text" name="recherche" placeholder="Recherche..." class="form-control me-2" value="{{ request.args.get('recherche', '') }}">
+        <span style="margin-right: 10px;"></span> <!-- Espace entre le champ de recherche et le bouton Rechercher -->
         <button type="submit" class="btn btn-outline-primary">Rechercher</button>
     </form>
     <div class="d-flex justify-content-end mb-3">
         <a href="?tri=nom_utilisateur&ordre={{ 'desc' if request.args.get('tri') == 'nom_utilisateur' and request.args.get('ordre') == 'asc' else 'asc' }}&recherche={{ request.args.get('recherche', '') }}" class="btn btn-sm btn-outline-secondary me-2">Nom</a>
+        <span style="margin-right: 10px;"></span>
         <a href="?tri=score&ordre={{ 'asc' if request.args.get('tri') == 'score' and request.args.get('ordre') == 'desc' else 'desc' }}&recherche={{ request.args.get('recherche', '') }}" class="btn btn-sm btn-outline-secondary">Score</a>
     </div>
     <ul class="list-group">
         {% for utilisateur in utilisateurs %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
             {{ utilisateur.nom_utilisateur }}
-            <span class="badge bg-primary rounded-pill">{{ utilisateur.score }}</span>
+            <span class="badge rounded-pill mb-2"
+                {% if utilisateur.score <= 10 %}
+                    style="background-color: #6600ffde; color: #fff;"
+                {% elif utilisateur.score <= 20 %}
+                    style="background-color: #3300ffda; color: #fff;"
+                {% elif utilisateur.score <= 30 %}
+                    style="background-color: #0000ffe1; color: #fff;"
+                {% elif utilisateur.score <= 40 %}
+                    style="background-color: #0033ffd8; color: #fff;"
+                {% elif utilisateur.score <= 50 %}
+                    style="background-color: #0066ffd8; color: #fff;"
+                {% elif utilisateur.score <= 60 %}
+                    style="background-color: #0099ffda; color: #fff;"
+                {% elif utilisateur.score <= 70 %}
+                    style="background-color: #00ccffd7; color: #fff;"
+                {% elif utilisateur.score <= 80 %}
+                    style="background-color: #00ffffd8; color: #fff;"
+                {% elif utilisateur.score <= 90 %}
+                    style="background-color: #00ffcce1; color: #fff;"
+                {% elif utilisateur.score <= 100 %}
+                    style="background-color: #00ff99c0; color: #fff;"
+                {% elif utilisateur.score <= 150 %}
+                    style="background-color: #00ff66e9; color: #fff;"
+                {% elif utilisateur.score <= 200 %}
+                    style="background-color: #00ff33f0; color: #fff;"
+                {% elif utilisateur.score <= 250 %}
+                    style="background-color: #00FF00; color: #fff;"
+                {% elif utilisateur.score <= 300 %}
+                    style="background-color: #33ff00e4; color: #fff;"
+                {% elif utilisateur.score <= 350 %}
+                    style="background-color: #66FF00; color: #fff;"
+                {% elif utilisateur.score <= 400 %}
+                    style="background-color: #99ff00e7; color: #fff;"
+                {% elif utilisateur.score <= 500 %}
+                    style="background-color: #ccff00ea; color: #fff;"
+                {% elif utilisateur.score <= 600 %}
+                    style="background-color: #ffff00de; color: #fff;"
+                {% elif utilisateur.score <= 700 %}
+                    style="background-color: #FFCC00; color: #fff;"
+                {% elif utilisateur.score <= 800 %}
+                    style="background-color: #ff9900ed; color: #fff;"
+                {% elif utilisateur.score <= 900 %}
+                    style="background-color: #ff6600ef; color: #fff;"
+                {% elif utilisateur.score <= 1000 %}
+                    style="background-color: #ff3300eb; color: #fff;"
+                {% endif %}
+            >
+                {{ utilisateur.score }}
+            </span>
         </li>
         {% endfor %}
     </ul>

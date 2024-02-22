@@ -7,6 +7,7 @@
     <a href="{{ url_for('afficher_cours') }}" class="me-2 text-dark text-decoration-none">
         <i class="fas fa-arrow-left"></i>
     </a>
+    <span style="margin-right: 10px;"></span> <!-- Espace entre la flèche et le nom du cours -->
     <h2 class="flex-grow-1 mb-0">{{ cours.titre_cours }}</h2>
 
     {% if cours in current_user.cours_suivis %}
@@ -18,7 +19,8 @@
             <button type="submit" class="btn btn-primary">Suivre ce cours</button>
         </form>
     {% endif %}
-
+    
+    <span style="margin-left: 10px;"></span> <!-- Espace entre le bouton "Suivre ce cours" et la catégorie du cours -->
     <span class="text-muted">{{ cours.categorie.nom }}</span>
 </div>
 
@@ -37,6 +39,7 @@
 {% if current_user.is_authenticated and current_user.role == 2 %}
 <div class="mt-3 d-flex align-items-center gap-2">
     <a href="{{ url_for('modifier_cours', uid_cours=cours.uid_cours) }}" class="btn btn-primary">Modifier</a>
+    <span style="margin-right: 10px;"></span> <!-- Espace entre les boutons Modifier et Supprimer -->
     <form action="{{ url_for('supprimer_cours', uid_cours=cours.uid_cours) }}" method="post">
         <button type="submit" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce cours ?');">Supprimer</button>
     </form>

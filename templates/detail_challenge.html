@@ -7,6 +7,7 @@
     <a href="{{ url_for('afficher_challenges') }}" class="text-dark text-decoration-none me-2">
         <i class="fas fa-arrow-left"></i>
     </a>
+    <span style="margin-right: 10px;"></span> <!-- Ajout d'un espace vide avec une marge à droite -->
     <h2 class="mb-0">{{ challenge.titre_challenge }}</h2>
     <span class="badge bg-primary rounded-pill ms-2">{{ challenge.value }} points</span>
     <span class="text-muted ms-auto">{{ challenge.categorie.nom }}</span>
@@ -37,10 +38,12 @@
 {% if current_user.is_authenticated and current_user.role == 2 %}
 <div class="mt-4 d-flex align-items-center gap-2">
     <a href="{{ url_for('modifier_challenge', uid_challenge=challenge.uid_challenge) }}" class="btn btn-primary">Modifier</a>
+    <span style="margin-right: 10px;"></span> <!-- Ajout d'un espace vide avec une marge à droite -->
     <form action="{{ url_for('supprimer_challenge', uid_challenge=challenge.uid_challenge) }}" method="post">
         <button type="submit" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce challenge ?');">Supprimer</button>
     </form>
 </div>
+
 {% endif %}
 
 {% endblock %}
